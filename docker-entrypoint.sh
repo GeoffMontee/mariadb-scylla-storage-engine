@@ -99,4 +99,4 @@ EOSQL
 fi
 
 # Start MariaDB server
-exec mariadbd --user=mysql --datadir=/var/lib/mysql "$@"
+exec "$@" --user=mysql --datadir=/var/lib/mysql
