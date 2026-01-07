@@ -78,6 +78,10 @@ public:
   // Capabilities and requirements
   ulonglong table_flags() const;
   ulong index_flags(uint idx, uint part, bool all_parts) const;
+  uint max_supported_keys() const { return 1; }
+  uint max_supported_key_parts() const { return 64; }
+  uint max_supported_key_length() const { return 3500; }
+  uint max_supported_key_part_length() const { return 3500; }
   
   // Table operations
   int create(const char *name, TABLE *form, HA_CREATE_INFO *create_info);
