@@ -123,6 +123,7 @@ ha_scylla::ha_scylla(handlerton *hton, TABLE_SHARE *table_arg)
     scan_active(false),
     scylla_port(scylla_default_port)
 {
+  thr_lock_init(&thr_lock);
   if (scylla_default_hosts) {
     scylla_hosts = scylla_default_hosts;
   }
@@ -136,6 +137,7 @@ ha_scylla::ha_scylla(handlerton *hton, TABLE_SHARE *table_arg)
  */
 ha_scylla::~ha_scylla()
 {
+  thr_lock_delete(&thr_lock);
 }
 
 /**
@@ -361,7 +363,8 @@ int ha_scylla::open(const char *name, int mode, uint test_if_locked)
     DBUG_RETURN(rc);
   }
   
-  // Thread lock initialization removed in MariaDB 12.1
+  // Initialize lock data structure
+  thr_lock_data_init(&thr_lock, &lock, NULL);
   
   DBUG_RETURN(0);
 }

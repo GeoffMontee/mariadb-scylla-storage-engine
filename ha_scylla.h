@@ -42,6 +42,7 @@ class ha_scylla: public handler
 {
 private:
   THR_LOCK_DATA lock;                    // MariaDB lock structure
+  THR_LOCK thr_lock;                     // MariaDB lock object
   std::shared_ptr<ScyllaConnection> conn; // Connection to ScyllaDB cluster
   std::string keyspace_name;              // ScyllaDB keyspace name
   std::string table_name;                 // ScyllaDB table name

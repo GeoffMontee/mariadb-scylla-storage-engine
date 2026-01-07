@@ -36,7 +36,9 @@ services:
       dockerfile: Dockerfile
     container_name: mariadb-scylla
     hostname: mariadb-scylla
-    command: mariadbd --plugin-maturity=unknown
+    command: mariadbd --plugin-maturity=unknown --core-file
+    ulimits:
+      core: -1
     environment:
       - MYSQL_ROOT_PASSWORD=rootpassword
       - MYSQL_DATABASE=demo
@@ -44,6 +46,10 @@ services:
       - MYSQL_PASSWORD=demopassword
     ports:
       - "3306:3306"
+    volumes:
+      - mariadb-data:/var/lib/mysql
+      - ./cores:/cores
+    working_dir: /cores
     networks:
       - scylla-mariadb-network
     depends_on:
