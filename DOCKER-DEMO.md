@@ -207,16 +207,15 @@ USE demo;
 CREATE TABLE users (
   id INT PRIMARY KEY,
   name VARCHAR(100),
-  email VARCHAR(100),
-  created_at TIMESTAMP
+  email VARCHAR(100)
 ) ENGINE=SCYLLA;
 
 -- Insert data
-INSERT INTO users (id, name, email, created_at) 
-VALUES (1, 'Bob', 'bob@example.com', NOW());
+INSERT INTO users (id, name, email) 
+VALUES (1, 'Bob', 'bob@example.com');
 
-INSERT INTO users (id, name, email, created_at)
-VALUES (2, 'Charlie', 'charlie@example.com', NOW());
+INSERT INTO users (id, name, email)
+VALUES (2, 'Charlie', 'charlie@example.com');
 
 -- Query data
 SELECT * FROM users;
@@ -271,7 +270,12 @@ echo "Creating ScyllaDB keyspace..."
 docker exec -i scylladb-node cqlsh <<EOF
 CREATE KEYSPACE IF NOT EXISTS demo WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
 USE demo;
-DESCRIBE KEYSPACES;
+CREATE TABLE IF NOT EXISTS products (
+  product_id INT PRIMARY KEY,
+  product_name TEXT,
+  price DECIMAL,
+  stock INT
+);
 EOF
 
 # Wait for MariaDB
@@ -381,7 +385,7 @@ docker run -d \
   --name scylladb-node \
   --network scylla-mariadb-network \
   -p 9042:9042 \
-  scylladb/scylla:5.2 \
+  scylladb/scylla:2025.1 \
   --smp 2 \
   --memory 4G
 ```
@@ -436,7 +440,7 @@ docker network rm scylla-mariadb-network
 
 # Remove images (optional)
 docker rmi mariadb-scylla:latest
-docker rmi scylladb/scylla:5.2
+docker rmi scylladb/scylla:2025.1
 ```
 
 ### Remove All Data Volumes
@@ -477,14 +481,14 @@ For a more realistic setup with multiple ScyllaDB nodes:
 ```yaml
 services:
   scylladb-node1:
-    image: scylladb/scylla:5.2
+    image: scylladb/scylla:2025.1
     container_name: scylladb-node1
     command: --seeds=scylladb-node1 --smp 1 --memory 2G
     networks:
       - scylla-mariadb-network
   
   scylladb-node2:
-    image: scylladb/scylla:5.2
+    image: scylladb/scylla:2025.1
     container_name: scylladb-node2
     command: --seeds=scylladb-node1 --smp 1 --memory 2G
     networks:
