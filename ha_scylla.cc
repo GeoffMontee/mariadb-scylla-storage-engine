@@ -76,10 +76,8 @@ static int scylla_init_func(void *p)
   DBUG_ENTER("scylla_init_func");
   
   scylla_hton = (handlerton *)p;
-  scylla_hton->state = SHOW_OPTION_YES;
   scylla_hton->create = scylla_create_handler;
   scylla_hton->flags = HTON_NO_FLAGS;
-  scylla_hton->db_type = DB_TYPE_UNKNOWN;
   
   DBUG_RETURN(0);
 }
@@ -111,7 +109,7 @@ mysql_declare_plugin(scylla)
   0x0100, /* version 1.0 */
   NULL,
   scylla_system_variables,
-  "1.0",
+  NULL,
   MariaDB_PLUGIN_MATURITY_EXPERIMENTAL
 }
 mysql_declare_plugin_end;
