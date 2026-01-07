@@ -36,7 +36,7 @@ services:
       dockerfile: Dockerfile
     container_name: mariadb-scylla
     hostname: mariadb-scylla
-    command: mariadbd --plugin-maturity=unknown --core-file
+    command: /usr/bin/mariadbd --plugin-maturity=unknown --core-file
     ulimits:
       core: -1
     environment:
@@ -48,6 +48,7 @@ services:
       - "3306:3306"
     volumes:
       - mariadb-data:/var/lib/mysql
+      - ./examples:/examples:ro
       - ./cores:/cores
     working_dir: /cores
     networks:
@@ -56,14 +57,11 @@ services:
       scylladb:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
+      test: ["CMD", "/usr/bin/mariadb-admin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s
-    volumes:
-      - mariadb-data:/var/lib/mysql
-      - ./examples:/examples:ro
 
 networks:
   scylla-mariadb-network:
