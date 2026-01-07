@@ -72,60 +72,60 @@ public:
   ~ha_scylla();
   
   // Storage engine identification
-  const char *table_type() const { return "SCYLLA"; }
-  const char *index_type(uint inx) { return "NONE"; }
+  const char *table_type() const override { return "SCYLLA"; }
+  const char *index_type(uint inx) override { return "NONE"; }
   
   // Capabilities and requirements
-  ulonglong table_flags() const;
-  ulong index_flags(uint idx, uint part, bool all_parts) const;
-  uint max_supported_keys() const { return 1; }
-  uint max_supported_key_parts() const { return 64; }
-  uint max_supported_key_length() const { return 3500; }
-  uint max_supported_key_part_length() const { return 3500; }
+  ulonglong table_flags() const override;
+  ulong index_flags(uint idx, uint part, bool all_parts) const override;
+  uint max_supported_keys() const override { return 1; }
+  uint max_supported_key_parts() const override { return 64; }
+  uint max_supported_key_length() const override { return 3500; }
+  uint max_supported_key_part_length() const override { return 3500; }
   
   // Table operations
-  int create(const char *name, TABLE *form, HA_CREATE_INFO *create_info);
-  int open(const char *name, int mode, uint test_if_locked);
-  int close(void);
-  int delete_table(const char *name);
-  int truncate();
-  int rename_table(const char *from, const char *to);
+  int create(const char *name, TABLE *form, HA_CREATE_INFO *create_info) override;
+  int open(const char *name, int mode, uint test_if_locked) override;
+  int close(void) override;
+  int delete_table(const char *name) override;
+  int truncate() override;
+  int rename_table(const char *from, const char *to) override;
   
   // Row operations
-  int write_row(const uchar *buf);
-  int update_row(const uchar *old_data, const uchar *new_data);
-  int delete_row(const uchar *buf);
+  int write_row(const uchar *buf) override;
+  int update_row(const uchar *old_data, const uchar *new_data) override;
+  int delete_row(const uchar *buf) override;
   
   // Scanning operations
-  int index_init(uint idx, bool sorted);
-  int index_end();
+  int index_init(uint idx, bool sorted) override;
+  int index_end() override;
   int index_read_map(uchar *buf, const uchar *key, key_part_map keypart_map,
-                     enum ha_rkey_function find_flag);
-  int index_next(uchar *buf);
-  int index_prev(uchar *buf);
-  int index_first(uchar *buf);
-  int index_last(uchar *buf);
+                     enum ha_rkey_function find_flag) override;
+  int index_next(uchar *buf) override;
+  int index_prev(uchar *buf) override;
+  int index_first(uchar *buf) override;
+  int index_last(uchar *buf) override;
   
-  int rnd_init(bool scan);
-  int rnd_next(uchar *buf);
-  int rnd_pos(uchar *buf, uchar *pos);
-  void position(const uchar *record);
-  int rnd_end();
+  int rnd_init(bool scan) override;
+  int rnd_next(uchar *buf) override;
+  int rnd_pos(uchar *buf, uchar *pos) override;
+  void position(const uchar *record) override;
+  int rnd_end() override;
   
   // Table info
-  int info(uint flag);
-  int external_lock(THD *thd, int lock_type);
+  int info(uint flag) override;
+  int external_lock(THD *thd, int lock_type) override;
   
   // Transaction support (basic - ScyllaDB is eventually consistent)
-  int start_stmt(THD *thd, thr_lock_type lock_type);
+  int start_stmt(THD *thd, thr_lock_type lock_type) override;
   
   // THR_LOCK support
   THR_LOCK_DATA **store_lock(THD *thd, THR_LOCK_DATA **to,
-                              enum thr_lock_type lock_type);
+                              enum thr_lock_type lock_type) override;
   
   // Number of rows estimate
   ha_rows records_in_range(uint inx, const key_range *min_key,
-                           const key_range *max_key, page_range *pages);
+                           const key_range *max_key, page_range *pages) override;
 };
 
 #endif // HA_SCYLLA_H
