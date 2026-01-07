@@ -1,28 +1,38 @@
 FROM mariadb:latest
 
-# Install build dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    cmake \
-    git \
-    wget \
-    curl \
-    pkg-config \
-    libssl-dev \
-    libuv1-dev \
-    libclang-dev \
-    && rm -rf /var/lib/apt/lists/*
+# Extract MariaDB version first for version-specific installations
+RUN MARIADB_VERSION=$(/usr/sbin/mariadbd --version | grep -oP '\d+\.\d+\.\d+' | head -1) && \
+    echo "Detected MariaDB version: $MARIADB_VERSION" && \
+    echo "MARIADB_VERSION=$MARIADB_VERSION" > /etc/mariadb_version.env
+
+# Install build dependencies with version-matched libmariadbd-dev
+RUN . /etc/mariadb_version.env && \
+    apt-get update && \
+    apt-get install -y \
+        build-essential \
+        cmake \
+        git \
+        wget \
+        curl \
+        pkg-config \
+        libssl-dev \
+        libuv1-dev \
+        libclang-dev && \
+    apt-get install -y libmariadbd-dev=$(apt-cache madison libmariadbd-dev | grep -F "$MARIADB_VERSION" | head -1 | awk '{print $3}') || \
+    apt-get install -y libmariadbd-dev && \
+    rm -rf /var/lib/apt/lists/*
 
 # Get MariaDB source headers (needed for plugin development)
-# Extract version from installed MariaDB
-RUN MARIADB_VERSION=$(mysqld --version | grep -oP '\d+\.\d+\.\d+' | head -1) && \
+# Clone the exact version tag to ensure compatibility
+RUN . /etc/mariadb_version.env && \
     echo "Downloading MariaDB $MARIADB_VERSION source headers..." && \
     cd /tmp && \
-    git clone --depth 1 --branch mariadb-$MARIADB_VERSION https://github.com/MariaDB/server.git mariadb-src || \
-    git clone --depth 1 https://github.com/MariaDB/server.git mariadb-src && \
+    git clone --depth 1 --branch mariadb-$MARIADB_VERSION https://github.com/MariaDB/server.git mariadb-src && \
     mkdir -p /usr/src/mariadb && \
     cp -r /tmp/mariadb-src/include /usr/src/mariadb/ && \
     cp -r /tmp/mariadb-src/sql /usr/src/mariadb/ && \
+    cp /tmp/mariadb-src/include/probes_mysql_nodtrace.h.in /usr/src/mariadb/include/probes_mysql_nodtrace.h && \
+    echo "MariaDB source version: $(cat /tmp/mariadb-src/VERSION 2>/dev/null || echo 'unknown')" && \
     rm -rf /tmp/mariadb-src
 
 # Install Rust (required for cpp-rs-driver)
@@ -61,4 +71,4 @@ RUN echo "INSTALL SONAME 'ha_scylla';" > /docker-entrypoint-initdb.d/00-install-
 EXPOSE 3306
 
 # Use the default MariaDB entrypoint
-CMD ["mysqld"]
+CMD ["mariadbd"]

@@ -44,15 +44,26 @@ A MariaDB storage engine that allows you to query ScyllaDB tables directly from 
 **Compile-time dependencies:**
 
 1. **MariaDB Development Headers**
+   
+   The plugin requires headers from two sources:
+   - **libmariadbd-dev package**: Provides built headers like `my_config.h`, `my_global.h`
+   - **MariaDB source tree**: Provides `handler.h` and other storage engine headers
+   
    ```bash
    # Ubuntu/Debian
-   sudo apt-get install libmariadbd-dev mariadb-plugin-connect
+   sudo apt-get install libmariadbd-dev
+   
+   # Then clone MariaDB source for handler.h
+   git clone --depth 1 --branch mariadb-<version> https://github.com/MariaDB/server.git /usr/src/mariadb
+   # Example: git clone --depth 1 --branch mariadb-10.11 https://github.com/MariaDB/server.git /usr/src/mariadb
    
    # RHEL/CentOS/Fedora
    sudo yum install mariadb-devel
+   git clone --depth 1 --branch mariadb-<version> https://github.com/MariaDB/server.git /usr/src/mariadb
    
    # macOS (Homebrew)
    brew install mariadb
+   git clone --depth 1 --branch mariadb-<version> https://github.com/MariaDB/server.git /usr/local/src/mariadb
    ```
 
 2. **ScyllaDB cpp-rs-driver**
@@ -153,7 +164,7 @@ sudo make install
 
    Add to `/etc/my.cnf` or `/etc/mysql/mariadb.conf.d/50-server.cnf` for persistence:
    ```ini
-   [mysqld]
+   [server]
    scylla_hosts = 192.168.1.100,192.168.1.101
    scylla_port = 9042
    scylla_keyspace = myapp

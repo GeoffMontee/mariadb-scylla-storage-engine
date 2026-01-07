@@ -3,7 +3,7 @@ version: '3.8'
 services:
   # ScyllaDB Node
   scylladb:
-    image: scylladb/scylla:5.2
+    image: scylladb/scylla:2025.1
     container_name: scylladb-node
     hostname: scylladb-node
     command: --smp 1 --memory 2G --overprovisioned 1 --api-address 0.0.0.0

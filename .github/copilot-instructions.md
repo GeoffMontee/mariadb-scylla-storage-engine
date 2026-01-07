@@ -13,6 +13,17 @@ This is a MariaDB storage engine plugin that bridges MariaDB and ScyllaDB, allow
 - **Build System**: CMake
 - **Containerization**: Docker, Docker Compose
 
+### Build Requirements
+The plugin requires MariaDB headers from two sources:
+1. **libmariadbd-dev package**: Provides generated/built headers (`my_config.h`, `my_global.h`, etc.)
+2. **MariaDB source tree**: Provides storage engine headers (`handler.h` in `sql/` directory)
+
+Both are required because:
+- `my_config.h` is generated during MariaDB build and not in the source tree
+- `handler.h` is in the source tree but not packaged in libmariadbd-dev
+
+The Dockerfile installs libmariadbd-dev and clones the MariaDB source. CMakeLists.txt searches for headers in both locations.
+
 ## Architecture
 
 ### Core Components
@@ -216,7 +227,7 @@ tail -f /tmp/mariadb-debug.log
 
 Use GDB:
 ```bash
-docker exec -it mariadb-scylla gdb mysqld
+docker exec -it mariadb-scylla gdb mariadbd
 ```
 
 ## Common Issues and Solutions

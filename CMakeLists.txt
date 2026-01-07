@@ -20,11 +20,21 @@ FIND_PATH(MARIADB_INCLUDE_DIR
 FIND_PATH(MARIADB_BASE_INCLUDE_DIR
   NAMES my_global.h mysql_version.h
   PATHS
+    /usr/include/mariadb/server
+    /usr/include/mysql/server
     /usr/src/mariadb/include
     /usr/local/src/mariadb/include
     /opt/mariadb/include
-    /usr/include/mariadb/server
-    /usr/include/mysql/server
+  NO_DEFAULT_PATH
+)
+
+# Also need the source tree include directory for headers like my_bitmap.h
+FIND_PATH(MARIADB_SOURCE_INCLUDE_DIR
+  NAMES my_bitmap.h
+  PATHS
+    /usr/src/mariadb/include
+    /usr/local/src/mariadb/include
+    /opt/mariadb/include
   NO_DEFAULT_PATH
 )
 
@@ -69,6 +79,10 @@ IF(NOT MARIADB_BASE_INCLUDE_DIR)
   MESSAGE(FATAL_ERROR "MariaDB include/ directory not found. Please install MariaDB source headers.")
 ENDIF()
 
+IF(NOT MARIADB_SOURCE_INCLUDE_DIR)
+  MESSAGE(FATAL_ERROR "MariaDB source include/ directory not found. Please install MariaDB source tree.")
+ENDIF()
+
 IF(NOT CASSANDRA_INCLUDE_DIR)
   MESSAGE(FATAL_ERROR "Cassandra/ScyllaDB driver include directory not found. Please install cpp-rs-driver.")
 ENDIF()
@@ -79,6 +93,7 @@ ENDIF()
 
 MESSAGE(STATUS "MariaDB sql dir: ${MARIADB_INCLUDE_DIR}")
 MESSAGE(STATUS "MariaDB include dir: ${MARIADB_BASE_INCLUDE_DIR}")
+MESSAGE(STATUS "MariaDB source include dir: ${MARIADB_SOURCE_INCLUDE_DIR}")
 MESSAGE(STATUS "Cassandra include dir: ${CASSANDRA_INCLUDE_DIR}")
 MESSAGE(STATUS "Cassandra library: ${CASSANDRA_LIBRARY}")
 
@@ -86,6 +101,7 @@ MESSAGE(STATUS "Cassandra library: ${CASSANDRA_LIBRARY}")
 INCLUDE_DIRECTORIES(
   ${MARIADB_INCLUDE_DIR}
   ${MARIADB_BASE_INCLUDE_DIR}
+  ${MARIADB_SOURCE_INCLUDE_DIR}
   ${CASSANDRA_INCLUDE_DIR}
 )
 
