@@ -9,20 +9,42 @@ This is a MariaDB storage engine plugin that bridges MariaDB and ScyllaDB, allow
 ### Key Technologies
 - **Language**: C++11
 - **MariaDB API**: Storage engine handler interface
+- **MariaDB Versions**: 12.1+ (default build: 12.1.2)
 - **ScyllaDB Driver**: cpp-rs-driver (ScyllaDB's Rust-based driver with C/C++ API)
+- **ScyllaDB Versions**: 2025.1+ (default: 2025.1)
 - **Build System**: CMake
 - **Containerization**: Docker, Docker Compose
 
-### Build Requirements
-The plugin requires MariaDB headers from two sources:
-1. **libmariadbd-dev package**: Provides generated/built headers (`my_config.h`, `my_global.h`, etc.)
-2. **MariaDB source tree**: Provides storage engine headers (`handler.h` in `sql/` directory)
+### Build Strategy
+The storage engine is built as an integrated part of the MariaDB build process:
 
-Both are required because:
-- `my_config.h` is generated during MariaDB build and not in the source tree
-- `handler.h` is in the source tree but not packaged in libmariadbd-dev
+**Docker/Production Build:**
+1. Start from Ubuntu 24.04 base image
+2. Install MariaDB build dependencies (cmake, gcc, bison, etc.)
+3. Clone MariaDB source at specific version tag (e.g., mariadb-12.1.2)
+4. Copy storage engine files into `storage/scylla/` directory within MariaDB source
+5. Build entire MariaDB with ScyllaDB storage engine using `-DPLUGIN_SCYLLA=DYNAMIC`
+6. Install built MariaDB with integrated plugin
 
-The Dockerfile installs libmariadbd-dev and clones the MariaDB source. CMakeLists.txt searches for headers in both locations.
+**Development Build:**
+The CMakeLists.txt supports two modes:
+- **Integrated mode** (within MariaDB build): Uses `MYSQL_ADD_PLUGIN` macro
+- **Standalone mode** (legacy): Builds plugin separately against installed headers
+
+This integrated approach:
+- Ensures all generated headers are available during compilation
+- Guarantees version compatibility
+- Follows standard MariaDB storage engine development workflow
+- Eliminates header path and version mismatch issues
+
+**Version Compatibility:**
+- The storage engine is compatible with MariaDB 12.1 and later
+- Handler API changes in MariaDB 12.1 require:
+  - `const` qualifiers on buffer parameters (`write_row`, `update_row`, `delete_row`)
+  - `page_range*` parameter in `records_in_range()`
+  - New bitmap API signature using double pointers (`dbug_tmp_use_all_columns`, `dbug_tmp_restore_column_map`)
+  - Removed `handlerton::state` and `handlerton::lock` members
+- The Dockerfile defaults to MariaDB 12.1.2 but can be customized via `MARIADB_VERSION` build arg
 
 ## Architecture
 

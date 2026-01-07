@@ -363,7 +363,7 @@ int ha_scylla::open(const char *name, int mode, uint test_if_locked)
     DBUG_RETURN(rc);
   }
   
-  thr_lock_data_init(&scylla_hton->lock, &lock, NULL);
+  // Thread lock initialization removed in MariaDB 12.1
   
   DBUG_RETURN(0);
 }
@@ -452,7 +452,8 @@ int ha_scylla::store_result_to_record(uchar *buf, size_t row_index)
     DBUG_RETURN(HA_ERR_END_OF_FILE);
   }
   
-  my_bitmap_map *org_bitmap = dbug_tmp_use_all_columns(table, table->write_set);
+  MY_BITMAP *old_map = table->write_set;
+  dbug_tmp_use_all_columns(table, &table->write_set);
   
   const std::vector<std::string> &row = result_set[row_index];
   
@@ -470,7 +471,7 @@ int ha_scylla::store_result_to_record(uchar *buf, size_t row_index)
     }
   }
   
-  dbug_tmp_restore_column_map(table->write_set, org_bitmap);
+  dbug_tmp_restore_column_map(&table->write_set, old_map);
   
   DBUG_RETURN(0);
 }
@@ -478,7 +479,7 @@ int ha_scylla::store_result_to_record(uchar *buf, size_t row_index)
 /**
  * Write row
  */
-int ha_scylla::write_row(uchar *buf)
+int ha_scylla::write_row(const uchar *buf)
 {
   DBUG_ENTER("ha_scylla::write_row");
   
@@ -493,7 +494,7 @@ int ha_scylla::write_row(uchar *buf)
 /**
  * Update row
  */
-int ha_scylla::update_row(const uchar *old_data, uchar *new_data)
+int ha_scylla::update_row(const uchar *old_data, const uchar *new_data)
 {
   DBUG_ENTER("ha_scylla::update_row");
   
@@ -758,9 +759,10 @@ THR_LOCK_DATA **ha_scylla::store_lock(THD *thd, THR_LOCK_DATA **to,
 /**
  * Estimate records in range
  */
-ha_rows ha_scylla::records_in_range(uint inx, key_range *min_key,
-                                     key_range *max_key)
+ha_rows ha_scylla::records_in_range(uint inx, const key_range *min_key,
+                                     const key_range *max_key, page_range *pages)
 {
   DBUG_ENTER("ha_scylla::records_in_range");
+  // page_range parameter is ignored for now
   DBUG_RETURN(10); // Rough estimate
 }

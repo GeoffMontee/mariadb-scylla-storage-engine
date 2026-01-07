@@ -13,8 +13,8 @@ A MariaDB storage engine that allows you to query ScyllaDB tables directly from 
 
 ## Supported Versions
 
-- **MariaDB**: All currently supported versions (10.5+)
-- **ScyllaDB**: 2024.1 and later
+- **MariaDB**: 12.1+ (tested with 12.1.2)
+- **ScyllaDB**: 2025.1 and later (tested with 2025.1)
 - **Driver**: ScyllaDB cpp-rs-driver (Rust-based with C/C++ API)
 
 ## Supported Data Types
@@ -39,31 +39,56 @@ A MariaDB storage engine that allows you to query ScyllaDB tables directly from 
 
 ## Installation
 
+### Build Strategy
+
+The storage engine is built as an integrated part of MariaDB from source:
+
+1. **MariaDB source tree**: Clone complete MariaDB source at specific version tag (e.g., mariadb-12.1.2)
+2. **Storage engine integration**: Copy plugin files into `storage/scylla/` directory
+3. **Unified build**: Build MariaDB with the ScyllaDB storage engine included using `-DPLUGIN_SCYLLA=DYNAMIC`
+
+This approach:
+- Ensures all generated headers are available (e.g., `my_config.h`, wsrep headers)
+- Guarantees version compatibility between MariaDB and the storage engine
+- Follows standard MariaDB storage engine development practices
+- Eliminates header mismatch issues
+
+The Dockerfile builds MariaDB 12.1.2 from source with the ScyllaDB storage engine. You can customize the version using the `MARIADB_VERSION` build argument:
+
+```bash
+docker build --build-arg MARIADB_VERSION=12.1.2 -t mariadb-scylla:latest .
+```
+
 ### Prerequisites
 
-**Compile-time dependencies:**
+**For Docker-based setup (recommended):**
+- Docker Engine 20.10 or later
+- At least 8GB RAM for building MariaDB from source
+- See [DOCKER-DEMO.md](DOCKER-DEMO.md) for complete setup instructions
 
-1. **MariaDB Development Headers**
+**For manual compilation:**
+
+1. **MariaDB Build Dependencies**
    
-   The plugin requires headers from two sources:
-   - **libmariadbd-dev package**: Provides built headers like `my_config.h`, `my_global.h`
-   - **MariaDB source tree**: Provides `handler.h` and other storage engine headers
+   Full MariaDB source build requirements:
    
    ```bash
    # Ubuntu/Debian
-   sudo apt-get install libmariadbd-dev
-   
-   # Then clone MariaDB source for handler.h
-   git clone --depth 1 --branch mariadb-<version> https://github.com/MariaDB/server.git /usr/src/mariadb
-   # Example: git clone --depth 1 --branch mariadb-10.11 https://github.com/MariaDB/server.git /usr/src/mariadb
+   sudo apt-get install build-essential cmake git bison \
+     libncurses-dev libssl-dev libreadline-dev zlib1g-dev \
+     libxml2-dev libevent-dev libpcre2-dev liblz4-dev \
+     libzstd-dev libsnappy-dev libbz2-dev libkrb5-dev \
+     libpam0g-dev libaio-dev libjemalloc-dev libnuma-dev \
+     libsystemd-dev liburing-dev gnutls-dev
    
    # RHEL/CentOS/Fedora
-   sudo yum install mariadb-devel
-   git clone --depth 1 --branch mariadb-<version> https://github.com/MariaDB/server.git /usr/src/mariadb
-   
-   # macOS (Homebrew)
-   brew install mariadb
-   git clone --depth 1 --branch mariadb-<version> https://github.com/MariaDB/server.git /usr/local/src/mariadb
+   sudo yum groupinstall "Development Tools"
+   sudo yum install cmake bison ncurses-devel openssl-devel \
+     readline-devel zlib-devel libxml2-devel libevent-devel \
+     pcre2-devel lz4-devel libzstd-devel snappy-devel \
+     bzip2-devel krb5-devel pam-devel libaio-devel \
+     jemalloc-devel numactl-devel systemd-devel liburing-devel \
+     gnutls-devel
    ```
 
 2. **ScyllaDB cpp-rs-driver**
