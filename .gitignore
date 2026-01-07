@@ -1,0 +1,69 @@
+# Build directories
+build/
+cmake-build-*/
+*.o
+*.so
+*.a
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Compiled binaries
+ha_scylla.so
+*.dylib
+*.dll
+
+# CMake files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.cmake
+!CMakeLists.txt
+!plugin.cmake
+
+# Docker volumes
+.docker-data/
+
+# Logs
+*.log
+*.err
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Package files
+*.tar.gz
+*.zip
+*.deb
+*.rpm
+
+# Test outputs
+test-results/
+coverage/
+
+# Editor configs (keep .editorconfig if you add one)
+.editorconfig
+
+# Documentation builds
+docs/_build/
+docs/.doctrees/
+
+# Python (if adding test scripts)
+__pycache__/
+*.py[cod]
+.pytest_cache/
+venv/
+env/
+
+# Temporary files
+tmp/
+temp/
+*.tmp

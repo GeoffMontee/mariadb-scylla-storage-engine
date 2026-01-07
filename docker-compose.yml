@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  # ScyllaDB Node
+  scylladb:
+    image: scylladb/scylla:5.2
+    container_name: scylladb-node
+    hostname: scylladb-node
+    command: --smp 1 --memory 2G --overprovisioned 1 --api-address 0.0.0.0
+    ports:
+      - "9042:9042"   # CQL native transport
+      - "9160:9160"   # Thrift client API
+      - "10000:10000" # REST API
+      - "9180:9180"   # Prometheus API
+    networks:
+      - scylla-mariadb-network
+    healthcheck:
+      test: ["CMD", "cqlsh", "-e", "describe keyspaces"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    volumes:
+      - scylladb-data:/var/lib/scylla
+
+  # MariaDB with ScyllaDB Storage Engine
+  mariadb:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mariadb-scylla
+    hostname: mariadb-scylla
+    environment:
+      - MYSQL_ROOT_PASSWORD=rootpassword
+      - MYSQL_DATABASE=demo
+      - MYSQL_USER=demo
+      - MYSQL_PASSWORD=demopassword
+    ports:
+      - "3306:3306"
+    networks:
+      - scylla-mariadb-network
+    depends_on:
+      scylladb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    volumes:
+      - mariadb-data:/var/lib/mysql
+      - ./examples:/examples:ro
+
+networks:
+  scylla-mariadb-network:
+    driver: bridge
+    name: scylla-mariadb-network
+
+volumes:
+  scylladb-data:
+    name: scylladb-data
+  mariadb-data:
+    name: mariadb-data
