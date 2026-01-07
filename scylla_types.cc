@@ -76,9 +76,6 @@ std::string ScyllaTypes::mariadb_to_cql_type(Field *field)
     case MYSQL_TYPE_SET:
       return "text";
     
-    case MYSQL_TYPE_JSON:
-      return "text";
-    
     // UUID (stored as BINARY(16) or CHAR(36) in MariaDB)
     case MYSQL_TYPE_BIT:
       return "boolean";
@@ -132,8 +129,7 @@ std::string ScyllaTypes::get_cql_value(Field *field)
     case MYSQL_TYPE_VAR_STRING:
     case MYSQL_TYPE_STRING:
     case MYSQL_TYPE_ENUM:
-    case MYSQL_TYPE_SET:
-    case MYSQL_TYPE_JSON: {
+    case MYSQL_TYPE_SET: {
       String str;
       field->val_str(&str);
       oss << "'" << escape_string(std::string(str.c_ptr_safe(), str.length())) << "'";
@@ -165,7 +161,7 @@ std::string ScyllaTypes::get_cql_value(Field *field)
     // Date/Time types
     case MYSQL_TYPE_DATE: {
       MYSQL_TIME ltime;
-      field->get_date(&ltime, 0);
+      field->get_date(&ltime, date_mode_t(0));
       oss << "'" << std::setfill('0')
           << std::setw(4) << ltime.year << "-"
           << std::setw(2) << ltime.month << "-"
@@ -175,7 +171,7 @@ std::string ScyllaTypes::get_cql_value(Field *field)
     
     case MYSQL_TYPE_TIME: {
       MYSQL_TIME ltime;
-      field->get_time(&ltime);
+      field->get_date(&ltime, date_mode_t(0));
       oss << "'" << std::setfill('0')
           << std::setw(2) << ltime.hour << ":"
           << std::setw(2) << ltime.minute << ":"
@@ -187,7 +183,7 @@ std::string ScyllaTypes::get_cql_value(Field *field)
     case MYSQL_TYPE_TIMESTAMP:
     case MYSQL_TYPE_TIMESTAMP2: {
       MYSQL_TIME ltime;
-      field->get_date(&ltime, 0);
+      field->get_date(&ltime, date_mode_t(0));
       // Convert to Unix timestamp in milliseconds for ScyllaDB
       struct tm tm_struct;
       memset(&tm_struct, 0, sizeof(tm_struct));
@@ -264,7 +260,6 @@ void ScyllaTypes::store_field_value(Field *field, const std::string &value)
     case MYSQL_TYPE_STRING:
     case MYSQL_TYPE_ENUM:
     case MYSQL_TYPE_SET:
-    case MYSQL_TYPE_JSON:
     case MYSQL_TYPE_TINY_BLOB:
     case MYSQL_TYPE_MEDIUM_BLOB:
     case MYSQL_TYPE_LONG_BLOB:
@@ -360,7 +355,6 @@ bool ScyllaTypes::is_supported_type(Field *field)
     case MYSQL_TYPE_TIMESTAMP2:
     case MYSQL_TYPE_ENUM:
     case MYSQL_TYPE_SET:
-    case MYSQL_TYPE_JSON:
     case MYSQL_TYPE_BIT:
       return true;
     
