@@ -6,7 +6,7 @@ services:
     image: scylladb/scylla:2025.1
     container_name: scylladb-node
     hostname: scylladb-node
-    command: --smp 1 --memory 2G --overprovisioned 1 --api-address 0.0.0.0
+    command: --smp 1 --memory 500M --overprovisioned 1 --api-address 0.0.0.0 --developer-mode 1
     ports:
       - "9042:9042"   # CQL native transport
       - "9160:9160"   # Thrift client API
@@ -14,6 +14,12 @@ services:
       - "9180:9180"   # Prometheus API
     networks:
       - scylla-mariadb-network
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 750M
     healthcheck:
       test: ["CMD", "cqlsh", "-e", "describe keyspaces"]
       interval: 30s

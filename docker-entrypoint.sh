@@ -16,7 +16,7 @@ if [ ! -d "/var/lib/mysql/mysql" ]; then
     mysql_log "Initializing database..."
     
     # Initialize MariaDB data directory
-    mysql_install_db --user=mysql --datadir=/var/lib/mysql
+    /usr/scripts/mariadb-install-db --user=mysql --datadir=/var/lib/mysql
     
     mysql_log "Database initialized"
     
@@ -27,7 +27,7 @@ if [ ! -d "/var/lib/mysql/mysql" ]; then
     
     # Wait for server to be ready
     for i in {30..0}; do
-        if mysqladmin --socket=/tmp/mysql_init.sock ping &>/dev/null; then
+        if mariadb-admin --socket=/tmp/mysql_init.sock ping &>/dev/null; then
             break
         fi
         sleep 1
@@ -43,7 +43,7 @@ if [ ! -d "/var/lib/mysql/mysql" ]; then
     # Set root password if provided
     if [ -n "$MYSQL_ROOT_PASSWORD" ]; then
         mysql_log "Setting root password..."
-        mysql --socket=/tmp/mysql_init.sock <<-EOSQL
+        mariadb --socket=/tmp/mysql_init.sock <<-EOSQL
             SET @@SESSION.SQL_LOG_BIN=0;
             DELETE FROM mysql.user WHERE user NOT IN ('mysql.sys', 'mariadb.sys', 'root') OR host NOT IN ('localhost');
             SET PASSWORD FOR 'root'@'localhost'=PASSWORD('${MYSQL_ROOT_PASSWORD}');
@@ -55,7 +55,7 @@ EOSQL
     # Create database if specified
     if [ -n "$MYSQL_DATABASE" ]; then
         mysql_log "Creating database ${MYSQL_DATABASE}..."
-        mysql --socket=/tmp/mysql_init.sock <<-EOSQL
+        mariadb --socket=/tmp/mysql_init.sock <<-EOSQL
             CREATE DATABASE IF NOT EXISTS \`${MYSQL_DATABASE}\`;
 EOSQL
     fi
@@ -63,7 +63,7 @@ EOSQL
     # Create user if specified
     if [ -n "$MYSQL_USER" ] && [ -n "$MYSQL_PASSWORD" ]; then
         mysql_log "Creating user ${MYSQL_USER}..."
-        mysql --socket=/tmp/mysql_init.sock <<-EOSQL
+        mariadb --socket=/tmp/mysql_init.sock <<-EOSQL
             CREATE USER '${MYSQL_USER}'@'%' IDENTIFIED BY '${MYSQL_PASSWORD}';
             GRANT ALL ON \`${MYSQL_DATABASE}\`.* TO '${MYSQL_USER}'@'%';
             FLUSH PRIVILEGES;
@@ -79,7 +79,7 @@ EOSQL
                 ;;
             *.sql)
                 mysql_log "Running $f"
-                mysql --socket=/tmp/mysql_init.sock < "$f"
+                mariadb --socket=/tmp/mysql_init.sock < "$f"
                 ;;
             *)
                 mysql_log "Ignoring $f"
@@ -89,7 +89,7 @@ EOSQL
     
     # Shutdown temporary server
     mysql_log "Stopping temporary server..."
-    if ! mysqladmin --socket=/tmp/mysql_init.sock shutdown; then
+    if ! mariadb-admin --socket=/tmp/mysql_init.sock shutdown; then
         mysql_error "Unable to shutdown server."
         exit 1
     fi

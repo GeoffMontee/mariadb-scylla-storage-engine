@@ -110,7 +110,7 @@ mysql_declare_plugin(scylla)
   NULL,
   scylla_system_variables,
   NULL,
-  MariaDB_PLUGIN_MATURITY_EXPERIMENTAL
+  MariaDB_PLUGIN_MATURITY_GAMMA
 }
 mysql_declare_plugin_end;
 

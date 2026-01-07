@@ -62,7 +62,7 @@ docker-compose logs -f mariadb
 
 ```bash
 # Connect to MariaDB
-docker exec -it mariadb-scylla mysql -u root -prootpassword
+docker exec -it mariadb-scylla mariadb -u root -prootpassword
 
 # Connect to ScyllaDB
 docker exec -it scylladb-node cqlsh
@@ -167,9 +167,9 @@ docker exec -it scylladb-node cqlsh
 
 ```bash
 # Connect to MariaDB container
-docker exec -it mariadb-scylla mysql -u root -prootpassword
+docker exec -it mariadb-scylla mariadb -u root -prootpassword
 
-# In MySQL prompt, run:
+# In MariaDB prompt, run:
 # SHOW ENGINES;
 # -- Should show SCYLLA in the list
 # 
@@ -262,7 +262,7 @@ sleep 10
 
 # Configure and test MariaDB
 echo "Testing MariaDB with ScyllaDB storage engine..."
-docker exec -i mariadb-scylla mysql -u root -prootpassword <<EOF
+docker exec -i mariadb-scylla mariadb -u root -prootpassword <<EOF
 -- Show storage engines
 SHOW ENGINES;
 
@@ -304,7 +304,7 @@ echo "Demo completed successfully!"
 echo "=============================================="
 echo ""
 echo "Access the services:"
-echo "  MariaDB:  mysql -h 127.0.0.1 -P 3306 -u root -prootpassword"
+echo "  MariaDB:  mariadb -h 127.0.0.1 -P 3306 -u root -prootpassword"
 echo "  ScyllaDB: docker exec -it scylladb-node cqlsh"
 echo ""
 echo "Stop the environment:"
@@ -323,11 +323,11 @@ chmod +x demo.sh
 ### MariaDB from Host
 
 ```bash
-# Using MySQL client
-mysql -h 127.0.0.1 -P 3306 -u root -prootpassword
+# Using MariaDB client
+mariadb -h 127.0.0.1 -P 3306 -u root -prootpassword
 
 # Using Docker
-docker exec -it mariadb-scylla mysql -u root -prootpassword
+docker exec -it mariadb-scylla mariadb -u root -prootpassword
 ```
 
 ### ScyllaDB from Host
@@ -391,7 +391,7 @@ docker exec -it mariadb-scylla ls -la /usr/lib/mysql/plugin/ | grep scylla
 docker exec -it mariadb-scylla tail -f /var/lib/mysql/*.err
 
 # Manually load plugin
-docker exec -it mariadb-scylla mysql -u root -prootpassword -e "INSTALL SONAME 'ha_scylla';"
+docker exec -it mariadb-scylla mariadb -u root -prootpassword -e "INSTALL SONAME 'ha_scylla';"
 ```
 
 ### Connection Timeouts
@@ -399,7 +399,7 @@ docker exec -it mariadb-scylla mysql -u root -prootpassword -e "INSTALL SONAME '
 ```bash
 # Increase ScyllaDB timeout settings
 # In MariaDB:
-docker exec -it mariadb-scylla mysql -u root -prootpassword -e \
+docker exec -it mariadb-scylla mariadb -u root -prootpassword -e \
   "SET GLOBAL net_read_timeout=60; SET GLOBAL net_write_timeout=60;"
 ```
 
