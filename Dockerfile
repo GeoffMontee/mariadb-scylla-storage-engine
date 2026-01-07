@@ -67,10 +67,11 @@ COPY ha_scylla.cc ha_scylla.h \
      /usr/src/mariadb/storage/scylla/
 
 # Build MariaDB with ScyllaDB storage engine
+# Using Debug build type for full debug symbols in MariaDB and plugin
 WORKDIR /usr/src/mariadb
 RUN mkdir build && cd build && \
     cmake .. \
-    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+    -DCMAKE_BUILD_TYPE=Debug \
     -DCMAKE_INSTALL_PREFIX=/usr \
     -DMYSQL_DATADIR=/var/lib/mysql \
     -DSYSCONFDIR=/etc/mysql \
