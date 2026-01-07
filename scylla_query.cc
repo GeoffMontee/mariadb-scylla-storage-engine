@@ -32,7 +32,7 @@ std::string ScyllaQueryBuilder::build_column_list(TABLE *table)
     if (!first) {
       oss << ", ";
     }
-    oss << table->field[i]->field_name;
+    oss << table->field[i]->field_name.str;
     first = false;
   }
   
@@ -47,7 +47,7 @@ std::string ScyllaQueryBuilder::build_values_list(TABLE *table, const uchar *buf
   std::ostringstream oss;
   bool first = true;
   
-  my_bitmap_map *org_bitmap = dbug_tmp_use_all_columns(table, table->read_set);
+  MY_BITMAP *org_bitmap = dbug_tmp_use_all_columns(table, &table->read_set);
   
   for (uint i = 0; i < table->s->fields; i++) {
     Field *field = table->field[i];
@@ -67,7 +67,7 @@ std::string ScyllaQueryBuilder::build_values_list(TABLE *table, const uchar *buf
     first = false;
   }
   
-  dbug_tmp_restore_column_map(table->read_set, org_bitmap);
+  dbug_tmp_restore_column_map(&table->read_set, org_bitmap);
   
   return oss.str();
 }
@@ -79,7 +79,7 @@ std::string ScyllaQueryBuilder::build_primary_key_where(TABLE *table, const ucha
 {
   std::ostringstream oss;
   
-  my_bitmap_map *org_bitmap = dbug_tmp_use_all_columns(table, table->read_set);
+  MY_BITMAP *org_bitmap = dbug_tmp_use_all_columns(table, &table->read_set);
   
   // Find primary key fields
   if (table->s->primary_key != MAX_KEY) {
@@ -96,7 +96,7 @@ std::string ScyllaQueryBuilder::build_primary_key_where(TABLE *table, const ucha
       // Move to the field's position in the buffer
       field->move_field((uchar*)buf + (field->ptr - table->record[0]));
       
-      oss << field->field_name << " = " << ScyllaTypes::get_cql_value(field);
+      oss << field->field_name.str << " = " << ScyllaTypes::get_cql_value(field);
       
       // Restore field position
       field->move_field(table->record[0] + (field->ptr - (uchar*)buf));
@@ -106,12 +106,12 @@ std::string ScyllaQueryBuilder::build_primary_key_where(TABLE *table, const ucha
     if (table->s->fields > 0) {
       Field *field = table->field[0];
       field->move_field((uchar*)buf + (field->ptr - table->record[0]));
-      oss << field->field_name << " = " << ScyllaTypes::get_cql_value(field);
+      oss << field->field_name.str << " = " << ScyllaTypes::get_cql_value(field);
       field->move_field(table->record[0] + (field->ptr - (uchar*)buf));
     }
   }
   
-  dbug_tmp_restore_column_map(table->read_set, org_bitmap);
+  dbug_tmp_restore_column_map(&table->read_set, org_bitmap);
   
   return oss.str();
 }
@@ -126,7 +126,7 @@ std::string ScyllaQueryBuilder::build_set_clause(TABLE *table,
   std::ostringstream oss;
   bool first = true;
   
-  my_bitmap_map *org_bitmap = dbug_tmp_use_all_columns(table, table->read_set);
+  MY_BITMAP *org_bitmap = dbug_tmp_use_all_columns(table, &table->read_set);
   
   // Get primary key fields to skip them in SET clause
   std::vector<uint> pk_fields;
@@ -157,7 +157,7 @@ std::string ScyllaQueryBuilder::build_set_clause(TABLE *table,
     // Move to the field's position in new data buffer
     field->move_field((uchar*)new_data + (field->ptr - table->record[0]));
     
-    oss << field->field_name << " = " << ScyllaTypes::get_cql_value(field);
+    oss << field->field_name.str << " = " << ScyllaTypes::get_cql_value(field);
     
     // Restore field position
     field->move_field(table->record[0] + (field->ptr - (uchar*)new_data));
@@ -165,7 +165,7 @@ std::string ScyllaQueryBuilder::build_set_clause(TABLE *table,
     first = false;
   }
   
-  dbug_tmp_restore_column_map(table->read_set, org_bitmap);
+  dbug_tmp_restore_column_map(&table->read_set, org_bitmap);
   
   return oss.str();
 }
@@ -198,7 +198,7 @@ std::string ScyllaQueryBuilder::build_create_table_cql(TABLE *table,
       oss << ", ";
     }
     
-    oss << field->field_name << " " << ScyllaTypes::mariadb_to_cql_type(field);
+    oss << field->field_name.str << " " << ScyllaTypes::mariadb_to_cql_type(field);
   }
   
   // Add primary key
@@ -211,14 +211,14 @@ std::string ScyllaQueryBuilder::build_create_table_cql(TABLE *table,
       if (i > 0) {
         oss << ", ";
       }
-      oss << key_info->key_part[i].field->field_name;
+      oss << key_info->key_part[i].field->field_name.str;
     }
     
     oss << ")";
   } else {
     // If no primary key is defined, use the first field
     if (table->s->fields > 0) {
-      oss << ", PRIMARY KEY (" << table->field[0]->field_name << ")";
+      oss << ", PRIMARY KEY (" << table->field[0]->field_name.str << ")";
     }
   }
   
@@ -333,7 +333,7 @@ std::string ScyllaQueryBuilder::build_where_from_key(TABLE *table,
       
       // Read the key value
       field->move_field((uchar*)key_ptr);
-      oss << field->field_name << " = " << ScyllaTypes::get_cql_value(field);
+      oss << field->field_name.str << " = " << ScyllaTypes::get_cql_value(field);
       field->move_field(table->record[0] + (field->ptr - (uchar*)key_ptr));
       
       // Move to next key part
