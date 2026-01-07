@@ -38,6 +38,9 @@ sudo yum install docker docker-compose
 # Navigate to the project directory
 cd mariadb-scylla-storage-engine
 
+# Build the MariaDB Docker image
+docker-compose build --no-cache mariadb
+
 # Start the services
 docker-compose up -d
 ```
@@ -97,7 +100,7 @@ docker run -d \
   -p 9042:9042 \
   -p 9160:9160 \
   -p 10000:10000 \
-  scylladb/scylla:5.2 \
+  scylladb/scylla:2025.1 \
   --smp 1 \
   --memory 2G
 ```

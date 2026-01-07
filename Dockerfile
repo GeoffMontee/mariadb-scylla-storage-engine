@@ -99,4 +99,4 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 EXPOSE 3306
 
 ENTRYPOINT ["docker-entrypoint.sh"]
-CMD ["mariadbd"]
+CMD ["/usr/bin/mariadbd"]
