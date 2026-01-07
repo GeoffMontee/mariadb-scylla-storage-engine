@@ -78,6 +78,12 @@ docker-compose down
 
 # To remove volumes as well (WARNING: deletes all data)
 docker-compose down -v
+
+# To prune images
+docker system prune -af
+
+# To prune volumes
+docker system prune -af --volumes
 ```
 
 ### Option 2: Manual Docker Setup
