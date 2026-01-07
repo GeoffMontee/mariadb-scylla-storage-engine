@@ -22,7 +22,7 @@ if [ ! -d "/var/lib/mysql/mysql" ]; then
     
     # Start temporary server for setup
     mysql_log "Starting temporary server..."
-    mariadbd --user=mysql --datadir=/var/lib/mysql --skip-networking --socket=/tmp/mysql_init.sock &
+    mariadbd --user=mysql --datadir=/var/lib/mysql --skip-networking --socket=/tmp/mysql_init.sock --plugin-maturity=unknown &
     pid="$!"
     
     # Wait for server to be ready

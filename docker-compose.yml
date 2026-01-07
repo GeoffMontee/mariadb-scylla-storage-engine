@@ -36,6 +36,7 @@ services:
       dockerfile: Dockerfile
     container_name: mariadb-scylla
     hostname: mariadb-scylla
+    command: mariadbd --plugin-maturity=unknown
     environment:
       - MYSQL_ROOT_PASSWORD=rootpassword
       - MYSQL_DATABASE=demo
