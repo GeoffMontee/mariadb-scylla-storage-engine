@@ -153,14 +153,16 @@ docker run -d \
 ```bash
 # Connect to ScyllaDB container
 docker exec -it scylladb-node cqlsh
+```
 
+```sql
 # In cqlsh, run:
-# CREATE KEYSPACE demo WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
-# USE demo;
-# CREATE TABLE users (id int PRIMARY KEY, name text, email text);
-# INSERT INTO users (id, name, email) VALUES (1, 'Alice', 'alice@example.com');
-# SELECT * FROM users;
-# exit
+CREATE KEYSPACE demo WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
+USE demo;
+CREATE TABLE users (id int PRIMARY KEY, name text, email text);
+INSERT INTO users (id, name, email) VALUES (1, 'Alice', 'alice@example.com');
+SELECT * FROM users;
+exit
 ```
 
 ### 2. Verify MariaDB Storage Engine
@@ -168,13 +170,15 @@ docker exec -it scylladb-node cqlsh
 ```bash
 # Connect to MariaDB container
 docker exec -it mariadb-scylla mariadb -u root -prootpassword
+```
 
-# In MariaDB prompt, run:
-# SHOW ENGINES;
-# -- Should show SCYLLA in the list
-# 
-# SHOW PLUGINS;
-# -- Should show scylla plugin
+```sql
+-- In MariaDB prompt, run:
+SHOW ENGINES;
+-- Should show SCYLLA in the list
+
+SHOW PLUGINS;
+-- Should show scylla plugin
 ```
 
 ### 3. Create a ScyllaDB-backed Table in MariaDB
@@ -186,6 +190,9 @@ docker exec -it mariadb-scylla mariadb -u root -prootpassword
 SET GLOBAL scylla_hosts = 'scylladb-node';
 SET GLOBAL scylla_port = 9042;
 SET GLOBAL scylla_keyspace = 'demo';
+
+CREATE DATABASE demo;
+USE demo;
 
 -- Create a table
 CREATE TABLE users (
@@ -223,11 +230,13 @@ SELECT * FROM users;
 ```bash
 # Connect to ScyllaDB
 docker exec -it scylladb-node cqlsh
+```
 
+```sql
 # In cqlsh:
-# USE demo;
-# SELECT * FROM users;
-# exit
+USE demo;
+SELECT * FROM users;
+exit
 ```
 
 ## Complete Demo Script
