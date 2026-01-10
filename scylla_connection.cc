@@ -229,6 +229,18 @@ bool ScyllaConnection::execute(const std::string &cql,
           CassValueType type = cass_value_type(value);
           
           switch (type) {
+            case CASS_VALUE_TYPE_TINY_INT: {
+              cass_int8_t tinyint_val;
+              cass_value_get_int8(value, &tinyint_val);
+              row_data.push_back(std::to_string(tinyint_val));
+              break;
+            }
+            case CASS_VALUE_TYPE_SMALL_INT: {
+              cass_int16_t smallint_val;
+              cass_value_get_int16(value, &smallint_val);
+              row_data.push_back(std::to_string(smallint_val));
+              break;
+            }
             case CASS_VALUE_TYPE_INT: {
               cass_int32_t int_val;
               cass_value_get_int32(value, &int_val);
@@ -274,6 +286,18 @@ bool ScyllaConnection::execute(const std::string &cql,
               row_data.push_back(std::to_string(timestamp_val));
               break;
             }
+            case CASS_VALUE_TYPE_DATE: {
+              cass_uint32_t date_val;
+              cass_value_get_uint32(value, &date_val);
+              // CQL date is days since epoch (1970-01-01)
+              // Convert to YYYY-MM-DD format
+              time_t epoch_time = (time_t)date_val * 86400; // seconds
+              struct tm* tm_info = gmtime(&epoch_time);
+              char date_str[11];
+              strftime(date_str, sizeof(date_str), "%Y-%m-%d", tm_info);
+              row_data.push_back(std::string(date_str));
+              break;
+            }
             case CASS_VALUE_TYPE_UUID:
             case CASS_VALUE_TYPE_TIMEUUID: {
               char uuid_str[CASS_UUID_STRING_LENGTH];
@@ -299,12 +323,123 @@ bool ScyllaConnection::execute(const std::string &cql,
               break;
             }
             case CASS_VALUE_TYPE_DECIMAL: {
-              // Decimal requires special handling - for now store as string
               const cass_byte_t* varint;
               size_t varint_size;
               cass_int32_t scale;
               cass_value_get_decimal(value, &varint, &varint_size, &scale);
-              row_data.push_back("[DECIMAL]");
+              
+              // Convert varint bytes to a number
+              int64_t value_int = 0;
+              for (size_t i = 0; i < varint_size; i++) {
+                value_int = (value_int << 8) | varint[i];
+              }
+              
+              // Apply scale to create decimal string
+              std::ostringstream decimal_stream;
+              if (scale == 0) {
+                decimal_stream << value_int;
+              } else {
+                // Insert decimal point at the right position
+                std::string num_str = std::to_string(value_int);
+                if (scale >= num_str.length()) {
+                  // Pad with zeros if needed
+                  decimal_stream << "0.";
+                  for (int i = 0; i < scale - num_str.length(); i++) {
+                    decimal_stream << "0";
+                  }
+                  decimal_stream << num_str;
+                } else {
+                  size_t decimal_pos = num_str.length() - scale;
+                  decimal_stream << num_str.substr(0, decimal_pos) << "." 
+                                << num_str.substr(decimal_pos);
+                }
+              }
+              row_data.push_back(decimal_stream.str());
+              break;
+            }
+            case CASS_VALUE_TYPE_VARINT: {
+              const cass_byte_t* varint;
+              size_t varint_size;
+              cass_value_get_bytes(value, &varint, &varint_size);
+              
+              // Convert varint bytes to integer (big-endian, signed)
+              bool is_negative = (varint[0] & 0x80) != 0;
+              int64_t value_int = 0;
+              
+              if (is_negative) {
+                // Two's complement for negative numbers
+                value_int = -1;
+                for (size_t i = 0; i < varint_size && i < 8; i++) {
+                  value_int = (value_int << 8) | varint[i];
+                }
+              } else {
+                // Positive number
+                for (size_t i = 0; i < varint_size && i < 8; i++) {
+                  value_int = (value_int << 8) | varint[i];
+                }
+              }
+              
+              row_data.push_back(std::to_string(value_int));
+              break;
+            }
+            case CASS_VALUE_TYPE_TIME: {
+              cass_int64_t time_val;
+              cass_value_get_int64(value, &time_val);
+              // CQL time is nanoseconds since midnight
+              int64_t total_seconds = time_val / 1000000000LL;
+              int hours = total_seconds / 3600;
+              int minutes = (total_seconds % 3600) / 60;
+              int seconds = total_seconds % 60;
+              int micros = (time_val % 1000000000LL) / 1000;
+              
+              char time_str[20];
+              snprintf(time_str, sizeof(time_str), "%02d:%02d:%02d.%06d", 
+                      hours, minutes, seconds, micros);
+              row_data.push_back(std::string(time_str));
+              break;
+            }
+            case CASS_VALUE_TYPE_DURATION: {
+              cass_int32_t months, days;
+              cass_int64_t nanos;
+              cass_value_get_duration(value, &months, &days, &nanos);
+              
+              // Format as ISO 8601 duration string
+              std::ostringstream duration_stream;
+              duration_stream << "P";
+              if (months != 0) {
+                duration_stream << months << "M";
+              }
+              if (days != 0) {
+                duration_stream << days << "D";
+              }
+              if (nanos != 0) {
+                int64_t total_seconds = nanos / 1000000000LL;
+                int hours = total_seconds / 3600;
+                int minutes = (total_seconds % 3600) / 60;
+                int seconds = total_seconds % 60;
+                duration_stream << "T";
+                if (hours != 0) duration_stream << hours << "H";
+                if (minutes != 0) duration_stream << minutes << "M";
+                if (seconds != 0 || nanos % 1000000000LL != 0) {
+                  duration_stream << seconds;
+                  if (nanos % 1000000000LL != 0) {
+                    duration_stream << "." << (nanos % 1000000000LL);
+                  }
+                  duration_stream << "S";
+                }
+              }
+              if (months == 0 && days == 0 && nanos == 0) {
+                duration_stream << "T0S";
+              }
+              row_data.push_back(duration_stream.str());
+              break;
+            }
+            case CASS_VALUE_TYPE_INET: {
+              CassInet inet;
+              cass_value_get_inet(value, &inet);
+              char inet_str[CASS_INET_STRING_LENGTH];
+              cass_inet_string(inet, inet_str);
+              row_data.push_back(std::string(inet_str));
               break;
             }
             default:
