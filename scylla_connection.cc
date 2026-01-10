@@ -289,9 +289,12 @@ bool ScyllaConnection::execute(const std::string &cql,
             case CASS_VALUE_TYPE_DATE: {
               cass_uint32_t date_val;
               cass_value_get_uint32(value, &date_val);
-              // CQL date is days since epoch (1970-01-01)
+              // CQL date uses 2^31 as epoch (1970-01-01), days offset from that
+              const int32_t EPOCH_OFFSET = 2147483648;
+              int32_t days_since_epoch = static_cast<int32_t>(date_val) - EPOCH_OFFSET;
+              
               // Convert to YYYY-MM-DD format
-              time_t epoch_time = (time_t)date_val * 86400; // seconds
+              time_t epoch_time = static_cast<time_t>(days_since_epoch) * 86400; // seconds
               struct tm* tm_info = gmtime(&epoch_time);
               char date_str[11];
               strftime(date_str, sizeof(date_str), "%Y-%m-%d", tm_info);
