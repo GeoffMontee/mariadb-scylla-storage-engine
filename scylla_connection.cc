@@ -341,15 +341,15 @@ bool ScyllaConnection::execute(const std::string &cql,
               } else {
                 // Insert decimal point at the right position
                 std::string num_str = std::to_string(value_int);
-                if (scale >= num_str.length()) {
+                if (static_cast<size_t>(scale) >= num_str.length()) {
                   // Pad with zeros if needed
                   decimal_stream << "0.";
-                  for (int i = 0; i < scale - num_str.length(); i++) {
+                  for (size_t i = 0; i < static_cast<size_t>(scale) - num_str.length(); i++) {
                     decimal_stream << "0";
                   }
                   decimal_stream << num_str;
                 } else {
-                  size_t decimal_pos = num_str.length() - scale;
+                  size_t decimal_pos = num_str.length() - static_cast<size_t>(scale);
                   decimal_stream << num_str.substr(0, decimal_pos) << "." 
                                 << num_str.substr(decimal_pos);
                 }
