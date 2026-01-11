@@ -58,6 +58,7 @@ private:
   
   // Connection parameters stored during table creation
   std::string scylla_hosts;
+  bool verbose_logging;  // Enable verbose logging for this table
   int scylla_port;
   
   // Helper methods

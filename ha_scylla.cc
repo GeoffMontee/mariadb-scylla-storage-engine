@@ -27,6 +27,7 @@
 static char *scylla_default_hosts = NULL;
 static unsigned int scylla_default_port = 9042;
 static char *scylla_default_keyspace = NULL;
+static my_bool scylla_default_verbose = FALSE;
 
 static MYSQL_SYSVAR_STR(hosts, scylla_default_hosts,
   PLUGIN_VAR_RQCMDARG | PLUGIN_VAR_MEMALLOC,
@@ -43,10 +44,16 @@ static MYSQL_SYSVAR_STR(keyspace, scylla_default_keyspace,
   "Default ScyllaDB keyspace name",
   NULL, NULL, "mariadb");
 
+static MYSQL_SYSVAR_BOOL(verbose, scylla_default_verbose,
+  PLUGIN_VAR_RQCMDARG,
+  "Enable verbose logging for ScyllaDB operations (requires log_warnings >= 3)",
+  NULL, NULL, FALSE);
+
 static struct st_mysql_sys_var* scylla_system_variables[] = {
   MYSQL_SYSVAR(hosts),
   MYSQL_SYSVAR(port),
   MYSQL_SYSVAR(keyspace),
+  MYSQL_SYSVAR(verbose),
   NULL
 };
 
@@ -121,7 +128,8 @@ ha_scylla::ha_scylla(handlerton *hton, TABLE_SHARE *table_arg)
   : handler(hton, table_arg),
     current_position(0),
     scan_active(false),
-    scylla_port(scylla_default_port)
+    scylla_port(scylla_default_port),
+    verbose_logging(scylla_default_verbose)
 {
   thr_lock_init(&thr_lock);
   if (scylla_default_hosts) {
@@ -177,6 +185,8 @@ int ha_scylla::parse_table_comment(const char *comment)
       table_name = value;
     } else if (key == "scylla_port") {
       scylla_port = std::stoi(value);
+    } else if (key == "scylla_verbose") {
+      verbose_logging = (value == "true" || value == "1" || value == "yes");
     }
   }
   
@@ -206,6 +216,12 @@ int ha_scylla::connect_to_scylla()
                       "Cannot connect to ScyllaDB cluster at %s:%d",
                       MYF(0), scylla_hosts.c_str(), scylla_port);
       DBUG_RETURN(HA_ERR_NO_CONNECTION);
+    }
+    
+    if (verbose_logging && global_system_variables.log_warnings >= 3) {
+      sql_print_information("Scylla: Table %s.%s: Successfully created connection to remote server %s:%d",
+                           keyspace_name.c_str(), table_name.c_str(),
+                           scylla_hosts.c_str(), scylla_port);
     }
     
     if (!keyspace_name.empty()) {
@@ -487,7 +503,17 @@ int ha_scylla::write_row(const uchar *buf)
   ScyllaQueryBuilder builder;
   std::string cql = builder.build_insert_cql(table, buf, keyspace_name, table_name);
   
+  if (verbose_logging && global_system_variables.log_warnings >= 3) {
+    sql_print_information("Scylla: Table %s.%s: Executing INSERT %s",
+                         keyspace_name.c_str(), table_name.c_str(), cql.c_str());
+  }
+  
   int rc = execute_cql(cql);
+  
+  if (rc == 0 && verbose_logging && global_system_variables.log_warnings >= 3) {
+    sql_print_information("Scylla: Table %s.%s: Successfully INSERTed 1 row",
+                         keyspace_name.c_str(), table_name.c_str());
+  }
   
   DBUG_RETURN(rc);
 }
@@ -503,7 +529,17 @@ int ha_scylla::update_row(const uchar *old_data, const uchar *new_data)
   std::string cql = builder.build_update_cql(table, old_data, new_data, 
                                              keyspace_name, table_name);
   
+  if (verbose_logging && global_system_variables.log_warnings >= 3) {
+    sql_print_information("Scylla: Table %s.%s: Executing UPDATE %s",
+                         keyspace_name.c_str(), table_name.c_str(), cql.c_str());
+  }
+  
   int rc = execute_cql(cql);
+  
+  if (rc == 0 && verbose_logging && global_system_variables.log_warnings >= 3) {
+    sql_print_information("Scylla: Table %s.%s: Successfully UPDATEd 1 row",
+                         keyspace_name.c_str(), table_name.c_str());
+  }
   
   DBUG_RETURN(rc);
 }
@@ -518,7 +554,17 @@ int ha_scylla::delete_row(const uchar *buf)
   ScyllaQueryBuilder builder;
   std::string cql = builder.build_delete_cql(table, buf, keyspace_name, table_name);
   
+  if (verbose_logging && global_system_variables.log_warnings >= 3) {
+    sql_print_information("Scylla: Table %s.%s: Executing DELETE %s",
+                         keyspace_name.c_str(), table_name.c_str(), cql.c_str());
+  }
+  
   int rc = execute_cql(cql);
+  
+  if (rc == 0 && verbose_logging && global_system_variables.log_warnings >= 3) {
+    sql_print_information("Scylla: Table %s.%s: Successfully DELETEd 1 row",
+                         keyspace_name.c_str(), table_name.c_str());
+  }
   
   DBUG_RETURN(rc);
 }
@@ -538,9 +584,19 @@ int ha_scylla::rnd_init(bool scan)
     ScyllaQueryBuilder builder;
     std::string cql = builder.build_select_cql(table, keyspace_name, table_name, true);
     
+    if (verbose_logging && global_system_variables.log_warnings >= 3) {
+      sql_print_information("Scylla: Table %s.%s: Executing SELECT %s",
+                           keyspace_name.c_str(), table_name.c_str(), cql.c_str());
+    }
+    
     int rc = execute_cql(cql);
     if (rc) {
       DBUG_RETURN(rc);
+    }
+    
+    if (verbose_logging && global_system_variables.log_warnings >= 3) {
+      sql_print_information("Scylla: Table %s.%s: Successfully SELECTed %zu rows",
+                           keyspace_name.c_str(), table_name.c_str(), result_set.size());
     }
   }
   

@@ -192,6 +192,49 @@ When constructing CQL queries:
 
 3. Document in [README.md](README.md)
 
+**Current system variables:**
+- `scylla_hosts`: Default ScyllaDB contact points (string)
+- `scylla_port`: Default native transport port (integer, default: 9042)
+- `scylla_keyspace`: Default keyspace name (string, default: "mariadb")
+- `scylla_verbose`: Enable verbose logging (boolean, default: FALSE)
+
+### Adding a New Table Option
+
+Table options are parsed from the table COMMENT string in `parse_table_comment()`:
+
+1. Add parsing logic in [ha_scylla.cc](ha_scylla.cc) `parse_table_comment()`
+2. Add corresponding member variable to [ha_scylla.h](ha_scylla.h)
+3. Initialize in constructor
+4. Document in [README.md](README.md)
+
+**Current table options:**
+- `scylla_hosts`: Override default ScyllaDB contact points
+- `scylla_port`: Override default port
+- `scylla_keyspace`: Specify keyspace name
+- `scylla_table`: Specify remote table name (defaults to MariaDB table name)
+- `scylla_verbose`: Enable verbose logging for this table (true/false)
+
+### Verbose Logging
+
+The storage engine supports verbose logging when:
+- `scylla_verbose` is enabled (globally or per-table)
+- `log_warnings >= 3`
+
+Use `sql_print_information()` for verbose messages:
+```cpp
+if (verbose_logging && global_system_variables.log_warnings >= 3) {
+  sql_print_information("Scylla: Table %s.%s: Message",
+                       keyspace_name.c_str(), table_name.c_str());
+}
+```
+
+Current verbose logging points:
+- Connection establishment
+- SELECT operations (query + row count)
+- INSERT operations (query + success)
+- UPDATE operations (query + success)
+- DELETE operations (query + success)
+
 ### Enhancing Query Builder
 
 When modifying query generation:

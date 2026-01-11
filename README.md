@@ -232,6 +232,21 @@ COMMENT='scylla_hosts=192.168.1.100;scylla_keyspace=inventory;scylla_table=produ
 - `scylla_port`: Native transport port (default: 9042)
 - `scylla_keyspace`: ScyllaDB keyspace name
 - `scylla_table`: ScyllaDB table name (defaults to MariaDB table name)
+- `scylla_verbose`: Enable verbose logging for this table (true/false, default: false)
+
+**Example with verbose logging:**
+
+```sql
+CREATE TABLE products (
+  product_id INT PRIMARY KEY,
+  product_name VARCHAR(200),
+  price DECIMAL(10,2),
+  stock INT
+) ENGINE=SCYLLA
+COMMENT='scylla_hosts=192.168.1.100;scylla_keyspace=inventory;scylla_table=products;scylla_verbose=true';
+```
+
+When `scylla_verbose=true` is set and `log_warnings >= 3`, the storage engine will log detailed information about connections and operations to the MariaDB error log.
 
 ### Basic Operations
 
@@ -321,6 +336,7 @@ CREATE TABLE events (
 | `scylla_hosts` | String | "127.0.0.1" | Comma-separated list of ScyllaDB contact points |
 | `scylla_port` | Integer | 9042 | ScyllaDB native transport port |
 | `scylla_keyspace` | String | "mariadb" | Default keyspace name |
+| `scylla_verbose` | Boolean | FALSE | Enable verbose logging (requires log_warnings >= 3) |
 
 ### Setting Variables
 
@@ -330,6 +346,10 @@ SET scylla_hosts = '192.168.1.100,192.168.1.101';
 
 -- Global level (persists across sessions)
 SET GLOBAL scylla_hosts = '192.168.1.100,192.168.1.101';
+
+-- Enable verbose logging
+SET GLOBAL scylla_verbose = true;
+SET GLOBAL log_warnings = 3;
 ```
 
 ## Limitations
