@@ -128,8 +128,8 @@ ha_scylla::ha_scylla(handlerton *hton, TABLE_SHARE *table_arg)
   : handler(hton, table_arg),
     current_position(0),
     scan_active(false),
-    scylla_port(scylla_default_port),
-    verbose_logging(scylla_default_verbose)
+    verbose_logging(scylla_default_verbose),
+    scylla_port(scylla_default_port)
 {
   thr_lock_init(&thr_lock);
   if (scylla_default_hosts) {
