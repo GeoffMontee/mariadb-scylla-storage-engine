@@ -22,6 +22,7 @@
 #include <sql_plugin.h>
 #include <mysqld_error.h>
 #include <sstream>
+#include <map>
 
 // Plugin variables
 static char *scylla_default_hosts = NULL;
@@ -250,7 +251,7 @@ int ha_scylla::execute_cql(const std::string &cql)
   }
   
   try {
-    if (!conn->execute(cql, result_set)) {
+    if (!conn->execute(cql, column_names, result_set)) {
       my_printf_error(ER_GET_ERRNO, "CQL execution failed: %s",
                       MYF(0), cql.c_str());
       DBUG_RETURN(HA_ERR_GENERIC);
@@ -477,14 +478,29 @@ int ha_scylla::store_result_to_record(uchar *buf, size_t row_index)
   // Clear the record
   memset(buf, 0, table->s->null_bytes);
   
-  for (uint i = 0; i < table->s->fields && i < row.size(); i++) {
+  // Build a map of column names to their positions in the result set
+  std::map<std::string, size_t> column_map;
+  for (size_t i = 0; i < column_names.size() && i < row.size(); i++) {
+    column_map[column_names[i]] = i;
+  }
+  
+  // Map fields by name, not by position
+  for (uint i = 0; i < table->s->fields; i++) {
     Field *field = table->field[i];
+    std::string field_name(field->field_name.str, field->field_name.length);
     
-    if (row[i].empty() || row[i] == "NULL") {
-      field->set_null();
+    auto it = column_map.find(field_name);
+    if (it != column_map.end()) {
+      size_t col_idx = it->second;
+      if (row[col_idx].empty() || row[col_idx] == "NULL") {
+        field->set_null();
+      } else {
+        field->set_notnull();
+        ScyllaTypes::store_field_value(field, row[col_idx]);
+      }
     } else {
-      field->set_notnull();
-      ScyllaTypes::store_field_value(field, row[i]);
+      // Column not found in result set - set to NULL
+      field->set_null();
     }
   }
   

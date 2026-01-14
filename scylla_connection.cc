@@ -465,8 +465,152 @@ bool ScyllaConnection::execute(const std::string &cql,
   return true;
 }
 
-/**
- * Execute a CQL query without results
+/** * Execute CQL query with column names
+ */
+bool ScyllaConnection::execute(const std::string &cql,
+                               std::vector<std::string> &column_names,
+                               std::vector<std::vector<std::string>> &result)
+{
+  std::lock_guard<std::mutex> lock(mtx);
+  
+  if (!connected || !session) {
+    return false;
+  }
+  
+  column_names.clear();
+  result.clear();
+  
+  CassStatement* statement = cass_statement_new(cql.c_str(), 0);
+  CassFuture* query_future = cass_session_execute(session, statement);
+  
+  cass_future_wait(query_future);
+  
+  CassError rc = cass_future_error_code(query_future);
+  if (rc != CASS_OK) {
+    cass_future_free(query_future);
+    cass_statement_free(statement);
+    return false;
+  }
+  
+  const CassResult* cass_result = cass_future_get_result(query_future);
+  if (cass_result) {
+    // Get column names
+    size_t column_count = cass_result_column_count(cass_result);
+    for (size_t i = 0; i < column_count; i++) {
+      const char* column_name;
+      size_t column_name_length;
+      cass_result_column_name(cass_result, i, &column_name, &column_name_length);
+      column_names.push_back(std::string(column_name, column_name_length));
+    }
+    
+    // Get row data (same as before)
+    CassIterator* row_iterator = cass_iterator_from_result(cass_result);
+    
+    while (cass_iterator_next(row_iterator)) {
+      const CassRow* row = cass_iterator_get_row(row_iterator);
+      std::vector<std::string> row_data;
+      
+      for (size_t i = 0; i < column_count; i++) {
+        const CassValue* value = cass_row_get_column(row, i);
+        
+        if (cass_value_is_null(value)) {
+          row_data.push_back("NULL");
+        } else {
+          CassValueType type = cass_value_type(value);
+          
+          switch (type) {
+            case CASS_VALUE_TYPE_TINY_INT: {
+              cass_int8_t tinyint_val;
+              cass_value_get_int8(value, &tinyint_val);
+              row_data.push_back(std::to_string(tinyint_val));
+              break;
+            }
+            case CASS_VALUE_TYPE_SMALL_INT: {
+              cass_int16_t smallint_val;
+              cass_value_get_int16(value, &smallint_val);
+              row_data.push_back(std::to_string(smallint_val));
+              break;
+            }
+            case CASS_VALUE_TYPE_INT: {
+              cass_int32_t int_val;
+              cass_value_get_int32(value, &int_val);
+              row_data.push_back(std::to_string(int_val));
+              break;
+            }
+            case CASS_VALUE_TYPE_BIGINT: {
+              cass_int64_t bigint_val;
+              cass_value_get_int64(value, &bigint_val);
+              row_data.push_back(std::to_string(bigint_val));
+              break;
+            }
+            case CASS_VALUE_TYPE_FLOAT: {
+              cass_float_t float_val;
+              cass_value_get_float(value, &float_val);
+              row_data.push_back(std::to_string(float_val));
+              break;
+            }
+            case CASS_VALUE_TYPE_DOUBLE: {
+              cass_double_t double_val;
+              cass_value_get_double(value, &double_val);
+              row_data.push_back(std::to_string(double_val));
+              break;
+            }
+            case CASS_VALUE_TYPE_BOOLEAN: {
+              cass_bool_t bool_val;
+              cass_value_get_bool(value, &bool_val);
+              row_data.push_back(bool_val ? "1" : "0");
+              break;
+            }
+            case CASS_VALUE_TYPE_TEXT:
+            case CASS_VALUE_TYPE_VARCHAR:
+            case CASS_VALUE_TYPE_ASCII: {
+              const char* str_val;
+              size_t str_len;
+              cass_value_get_string(value, &str_val, &str_len);
+              row_data.push_back(std::string(str_val, str_len));
+              break;
+            }
+            case CASS_VALUE_TYPE_TIMESTAMP: {
+              cass_int64_t timestamp_val;
+              cass_value_get_int64(value, &timestamp_val);
+              row_data.push_back(std::to_string(timestamp_val));
+              break;
+            }
+            case CASS_VALUE_TYPE_DATE: {
+              cass_uint32_t date_val;
+              cass_value_get_uint32(value, &date_val);
+              const int32_t EPOCH_OFFSET = 2147483648;
+              int32_t days_since_epoch = static_cast<int32_t>(date_val) - EPOCH_OFFSET;
+              time_t epoch_time = static_cast<time_t>(days_since_epoch) * 86400;
+              struct tm* tm_info = gmtime(&epoch_time);
+              char date_str[11];
+              strftime(date_str, sizeof(date_str), "%Y-%m-%d", tm_info);
+              row_data.push_back(std::string(date_str));
+              break;
+            }
+            default: {
+              // Fallback for unsupported types
+              row_data.push_back("NULL");
+              break;
+            }
+          }
+        }
+      }
+      
+      result.push_back(row_data);
+    }
+    
+    cass_iterator_free(row_iterator);
+    cass_result_free(cass_result);
+  }
+  
+  cass_future_free(query_future);
+  cass_statement_free(statement);
+  
+  return true;
+}
+
+/** * Execute a CQL query without results
  */
 bool ScyllaConnection::execute(const std::string &cql)
 {

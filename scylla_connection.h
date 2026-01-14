@@ -91,6 +91,16 @@ public:
   bool execute(const std::string &cql, std::vector<std::vector<std::string>> &result);
   
   /**
+   * Execute a CQL query with column names
+   * @param cql CQL query string
+   * @param column_names Output vector of column names from result
+   * @param result Result set (vector of rows, each row is a vector of strings)
+   * @return true if successful
+   */
+  bool execute(const std::string &cql, std::vector<std::string> &column_names,
+               std::vector<std::vector<std::string>> &result);
+  
+  /**
    * Execute a CQL query without returning results
    * @param cql CQL query string
    * @return true if successful

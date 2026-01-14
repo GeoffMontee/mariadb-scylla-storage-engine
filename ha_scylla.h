@@ -48,6 +48,7 @@ private:
   std::string table_name;                 // ScyllaDB table name
   
   // Query results
+  std::vector<std::string> column_names;  // Column names from CQL result
   std::vector<std::vector<std::string>> result_set;
   size_t current_position;
   bool scan_active;
