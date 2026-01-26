@@ -23,6 +23,7 @@
 #include <mysqld_error.h>
 #include <sstream>
 #include <map>
+#include <algorithm>
 
 // Plugin variables
 static char *scylla_default_hosts = NULL;
@@ -256,6 +257,18 @@ int ha_scylla::execute_cql(const std::string &cql)
                       MYF(0), cql.c_str());
       DBUG_RETURN(HA_ERR_GENERIC);
     }
+    
+    // Debug: Log column names received from ScyllaDB
+    if (verbose_logging && global_system_variables.log_warnings >= 3 && !column_names.empty()) {
+      std::ostringstream cols;
+      for (size_t i = 0; i < column_names.size(); i++) {
+        if (i > 0) cols << ", ";
+        cols << column_names[i];
+      }
+      sql_print_information("Scylla: Table %s.%s: Received %zu columns from CQL: %s",
+                           keyspace_name.c_str(), table_name.c_str(),
+                           column_names.size(), cols.str().c_str());
+    }
   }
   catch (const std::exception &e) {
     my_printf_error(ER_GET_ERRNO, "CQL execution error: %s", MYF(0), e.what());
@@ -475,13 +488,19 @@ int ha_scylla::store_result_to_record(uchar *buf, size_t row_index)
   
   const std::vector<std::string> &row = result_set[row_index];
   
-  // Clear the record
-  memset(buf, 0, table->s->null_bytes);
+  // Initialize all fields to their default/null state
+  // This ensures we start with a clean slate
+  for (uint i = 0; i < table->s->fields; i++) {
+    table->field[i]->set_default();
+  }
   
   // Build a map of column names to their positions in the result set
+  // Use lowercase for case-insensitive matching
   std::map<std::string, size_t> column_map;
   for (size_t i = 0; i < column_names.size() && i < row.size(); i++) {
-    column_map[column_names[i]] = i;
+    std::string col_name_lower = column_names[i];
+    std::transform(col_name_lower.begin(), col_name_lower.end(), col_name_lower.begin(), ::tolower);
+    column_map[col_name_lower] = i;
   }
   
   // Map fields by name, not by position
@@ -489,9 +508,20 @@ int ha_scylla::store_result_to_record(uchar *buf, size_t row_index)
     Field *field = table->field[i];
     std::string field_name(field->field_name.str, field->field_name.length);
     
-    auto it = column_map.find(field_name);
+    // Convert to lowercase for case-insensitive lookup
+    std::string field_name_lower = field_name;
+    std::transform(field_name_lower.begin(), field_name_lower.end(), field_name_lower.begin(), ::tolower);
+    
+    auto it = column_map.find(field_name_lower);
     if (it != column_map.end()) {
       size_t col_idx = it->second;
+      
+      if (verbose_logging && global_system_variables.log_warnings >= 3) {
+        sql_print_information("Scylla: Table %s.%s: Mapping field '%s' -> column[%zu] = '%s'",
+                             keyspace_name.c_str(), table_name.c_str(),
+                             field_name.c_str(), col_idx, row[col_idx].c_str());
+      }
+      
       if (row[col_idx].empty() || row[col_idx] == "NULL") {
         field->set_null();
       } else {
@@ -500,6 +530,10 @@ int ha_scylla::store_result_to_record(uchar *buf, size_t row_index)
       }
     } else {
       // Column not found in result set - set to NULL
+      if (verbose_logging && global_system_variables.log_warnings >= 3) {
+        sql_print_information("Scylla: Table %s.%s: Field '%s' not found in result columns",
+                             keyspace_name.c_str(), table_name.c_str(), field_name.c_str());
+      }
       field->set_null();
     }
   }
