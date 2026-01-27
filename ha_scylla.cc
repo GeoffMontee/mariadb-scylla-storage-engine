@@ -490,6 +490,13 @@ int ha_scylla::store_result_to_record(uchar *buf, size_t row_index)
   
   // Move all fields to point to the provided buffer instead of table->record[0]
   my_ptrdiff_t offset = buf - table->record[0];
+  
+  if (verbose_logging && global_system_variables.log_warnings >= 3) {
+    sql_print_information("Scylla: Table %s.%s: store_result_to_record row %zu, buf=%p, table->record[0]=%p, offset=%td",
+                         keyspace_name.c_str(), table_name.c_str(), row_index, 
+                         buf, table->record[0], offset);
+  }
+  
   if (offset) {
     for (uint i = 0; i < table->s->fields; i++) {
       table->field[i]->move_field_offset(offset);
@@ -524,9 +531,9 @@ int ha_scylla::store_result_to_record(uchar *buf, size_t row_index)
       size_t col_idx = it->second;
       
       if (verbose_logging && global_system_variables.log_warnings >= 3) {
-        sql_print_information("Scylla: Table %s.%s: Mapping field '%s' -> column[%zu] = '%s'",
+        sql_print_information("Scylla: Table %s.%s: Mapping field '%s' -> column[%zu] = '%s', field->ptr=%p",
                              keyspace_name.c_str(), table_name.c_str(),
-                             field_name.c_str(), col_idx, row[col_idx].c_str());
+                             field_name.c_str(), col_idx, row[col_idx].c_str(), field->ptr);
       }
       
       if (row[col_idx].empty() || row[col_idx] == "NULL") {
@@ -534,6 +541,15 @@ int ha_scylla::store_result_to_record(uchar *buf, size_t row_index)
       } else {
         field->set_notnull();
         ScyllaTypes::store_field_value(field, row[col_idx]);
+        
+        // Debug: For integer fields, read back the value we just stored
+        if (verbose_logging && global_system_variables.log_warnings >= 3 && 
+            (field->type() == MYSQL_TYPE_LONG || field->type() == MYSQL_TYPE_LONGLONG)) {
+          longlong stored_val = field->val_int();
+          sql_print_information("Scylla: Table %s.%s: Stored integer value for '%s': wrote '%s', read back %lld",
+                               keyspace_name.c_str(), table_name.c_str(),
+                               field_name.c_str(), row[col_idx].c_str(), stored_val);
+        }
       }
     } else {
       // Column not found in result set - set to NULL
