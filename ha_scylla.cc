@@ -568,6 +568,24 @@ int ha_scylla::store_result_to_record(uchar *buf, size_t row_index)
     }
   }
   
+  // Final debug: Check what animal_id actually contains in the buffer before returning
+  if (verbose_logging && global_system_variables.log_warnings >= 3) {
+    for (uint i = 0; i < table->s->fields; i++) {
+      Field *field = table->field[i];
+      std::string field_name(field->field_name.str, field->field_name.length);
+      if (field_name == "animal_id" || field_name == "habitat_id" || field_name == "feeding_id") {
+        // Temporarily move field to buf for reading
+        field->move_field((uchar*)buf - table->record[0] + field->ptr);
+        longlong final_val = field->val_int();
+        field->move_field(table->record[0] - (uchar*)buf + field->ptr);
+        
+        sql_print_information("Scylla: Table %s.%s: Final check before return: '%s' = %lld (in buffer %p)",
+                             keyspace_name.c_str(), table_name.c_str(),
+                             field_name.c_str(), final_val, buf);
+      }
+    }
+  }
+  
   dbug_tmp_restore_column_map(&table->write_set, old_map);
   
   DBUG_RETURN(0);
