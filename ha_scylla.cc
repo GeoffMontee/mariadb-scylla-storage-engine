@@ -503,10 +503,8 @@ int ha_scylla::store_result_to_record(uchar *buf, size_t row_index)
     }
   }
   
-  // Initialize all fields to their default/null state
-  for (uint i = 0; i < table->s->fields; i++) {
-    table->field[i]->set_default();
-  }
+  // Clear the buffer to zero (safe for all types)
+  memset(buf, 0, table->s->reclength);
   
   // Build a map of column names to their positions in the result set
   // Use lowercase for case-insensitive matching
