@@ -492,9 +492,9 @@ int ha_scylla::store_result_to_record(uchar *buf, size_t row_index)
   my_ptrdiff_t offset = buf - table->record[0];
   
   if (verbose_logging && global_system_variables.log_warnings >= 3) {
-    sql_print_information("Scylla: Table %s.%s: store_result_to_record row %zu, buf=%p, table->record[0]=%p, offset=%td",
+    sql_print_information("Scylla: Table %s.%s: store_result_to_record row %zu, buf=%p, table->record[0]=%p, offset=%lld",
                          keyspace_name.c_str(), table_name.c_str(), row_index, 
-                         buf, table->record[0], offset);
+                         buf, table->record[0], (long long)offset);
   }
   
   if (offset) {
