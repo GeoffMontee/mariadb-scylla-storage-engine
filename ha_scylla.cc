@@ -488,8 +488,15 @@ int ha_scylla::store_result_to_record(uchar *buf, size_t row_index)
   
   const std::vector<std::string> &row = result_set[row_index];
   
+  // Move all fields to point to the provided buffer instead of table->record[0]
+  my_ptrdiff_t offset = buf - table->record[0];
+  if (offset) {
+    for (uint i = 0; i < table->s->fields; i++) {
+      table->field[i]->move_field_offset(offset);
+    }
+  }
+  
   // Initialize all fields to their default/null state
-  // This ensures we start with a clean slate
   for (uint i = 0; i < table->s->fields; i++) {
     table->field[i]->set_default();
   }
@@ -535,6 +542,13 @@ int ha_scylla::store_result_to_record(uchar *buf, size_t row_index)
                              keyspace_name.c_str(), table_name.c_str(), field_name.c_str());
       }
       field->set_null();
+    }
+  }
+  
+  // Restore field pointers to table->record[0] if we moved them
+  if (offset) {
+    for (uint i = 0; i < table->s->fields; i++) {
+      table->field[i]->move_field_offset(-offset);
     }
   }
   
