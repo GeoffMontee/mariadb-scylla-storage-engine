@@ -506,17 +506,18 @@ int ha_scylla::store_result_to_record(uchar *buf, size_t row_index)
     column_map[col_name_lower] = i;
   }
   
+  // If the null bitmap sits at the start of the record buffer, shift all fields
+  // by null_bytes so writes don't overlap the bitmap.
+  my_ptrdiff_t base_offset = 0;
+  if (table->s->null_bytes > 0 && table->null_flags == table->record[0]) {
+    base_offset = table->s->null_bytes;
+  }
+  
   // Map fields by name, not by position
   for (uint i = 0; i < table->s->fields; i++) {
     Field *field = table->field[i];
     my_ptrdiff_t field_offset = field->ptr - table->record[0];
-    my_ptrdiff_t extra_offset = 0;
-    if (table->s->null_bytes > 0 &&
-        field->null_ptr == table->record[0] &&
-        field_offset == 0) {
-      extra_offset = table->s->null_bytes;
-    }
-    uchar *field_buf = buf + field_offset + extra_offset;
+    uchar *field_buf = buf + field_offset + base_offset;
     field->move_field(field_buf);
     std::string field_name(field->field_name.str, field->field_name.length);
     // Debug: print offset and raw bytes for animal_id
@@ -594,13 +595,7 @@ int ha_scylla::store_result_to_record(uchar *buf, size_t row_index)
       std::string field_name(field->field_name.str, field->field_name.length);
       if (field_name == "animal_id" || field_name == "habitat_id" || field_name == "feeding_id") {
         my_ptrdiff_t field_offset = field->ptr - table->record[0];
-        my_ptrdiff_t extra_offset = 0;
-        if (table->s->null_bytes > 0 &&
-            field->null_ptr == table->record[0] &&
-            field_offset == 0) {
-          extra_offset = table->s->null_bytes;
-        }
-        uchar *field_buf = buf + field_offset + extra_offset;
+        uchar *field_buf = buf + field_offset + base_offset;
         field->move_field(field_buf);
         longlong final_val = field->val_int();
         field->move_field(table->record[0] + field_offset);
