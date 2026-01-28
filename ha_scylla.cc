@@ -549,6 +549,15 @@ int ha_scylla::store_result_to_record(uchar *buf, size_t row_index)
                                field_name.c_str(), row[col_idx].c_str(), stored_val);
         }
       }
+      if (verbose_logging && global_system_variables.log_warnings >= 3) {
+        unsigned char *p = (unsigned char*)buf;
+        char hex[32];
+        snprintf(hex, sizeof(hex), "%02x %02x %02x %02x %02x %02x %02x %02x",
+                 p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
+        sql_print_information("Scylla: Table %s.%s: Row bytes after field '%s': %s",
+                             keyspace_name.c_str(), table_name.c_str(),
+                             field_name.c_str(), hex);
+      }
     } else {
       // Column not found in result set - set to NULL
       if (verbose_logging && global_system_variables.log_warnings >= 3) {
