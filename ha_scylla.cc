@@ -518,28 +518,25 @@ int ha_scylla::store_result_to_record(uchar *buf, size_t row_index)
   // Map fields by name, not by position
   for (uint i = 0; i < table->s->fields; i++) {
     Field *field = table->field[i];
+    // Move field pointer to correct position in buf
+    field->move_field(buf);
     std::string field_name(field->field_name.str, field->field_name.length);
-    
     // Convert to lowercase for case-insensitive lookup
     std::string field_name_lower = field_name;
     std::transform(field_name_lower.begin(), field_name_lower.end(), field_name_lower.begin(), ::tolower);
-    
     auto it = column_map.find(field_name_lower);
     if (it != column_map.end()) {
       size_t col_idx = it->second;
-      
       if (verbose_logging && global_system_variables.log_warnings >= 3) {
         sql_print_information("Scylla: Table %s.%s: Mapping field '%s' -> column[%zu] = '%s', field->ptr=%p",
                              keyspace_name.c_str(), table_name.c_str(),
                              field_name.c_str(), col_idx, row[col_idx].c_str(), field->ptr);
       }
-      
       if (row[col_idx].empty() || row[col_idx] == "NULL") {
         field->set_null();
       } else {
         field->set_notnull();
         ScyllaTypes::store_field_value(field, row[col_idx]);
-        
         // Debug: For integer fields, read back the value we just stored
         if (verbose_logging && global_system_variables.log_warnings >= 3 && 
             (field->type() == MYSQL_TYPE_LONG || field->type() == MYSQL_TYPE_LONGLONG)) {
