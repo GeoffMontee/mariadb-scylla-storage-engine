@@ -476,6 +476,17 @@ bool ha_scylla::needs_allow_filtering(TABLE *table_arg)
  * Store result row to MariaDB record buffer
  */
 int ha_scylla::store_result_to_record(uchar *buf, size_t row_index)
+    if (verbose_logging && global_system_variables.log_warnings >= 3) {
+      sql_print_information("Scylla: Table %s.%s: Field '%s' offset in record: %ld, field->ptr=%p, buf=%p",
+        keyspace_name.c_str(), table_name.c_str(), field_name.c_str(),
+        (long)(field->ptr - buf), field->ptr, buf);
+      if (field_name == "animal_id") {
+        unsigned char *p = (unsigned char*)field->ptr;
+        char hex[32];
+        snprintf(hex, sizeof(hex), "%02x %02x %02x %02x", p[0], p[1], p[2], p[3]);
+        sql_print_information("Scylla: Table %s.%s: animal_id raw bytes: %s", keyspace_name.c_str(), table_name.c_str(), hex);
+      }
+    }
 {
   DBUG_ENTER("ha_scylla::store_result_to_record");
   
