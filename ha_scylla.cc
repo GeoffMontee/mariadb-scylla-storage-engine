@@ -518,8 +518,8 @@ int ha_scylla::store_result_to_record(uchar *buf, size_t row_index)
   // Map fields by name, not by position
   for (uint i = 0; i < table->s->fields; i++) {
     Field *field = table->field[i];
-    // Move field pointer to correct position in buf
-    field->move_field(buf);
+    // Move field pointer to correct offset in buf
+    field->move_field(buf + (field->ptr - table->record[0]));
     std::string field_name(field->field_name.str, field->field_name.length);
     // Convert to lowercase for case-insensitive lookup
     std::string field_name_lower = field_name;
