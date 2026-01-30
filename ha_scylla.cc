@@ -492,6 +492,10 @@ int ha_scylla::store_result_to_record(uchar *buf, size_t row_index)
     sql_print_information("Scylla: Table %s.%s: store_result_to_record row %zu, buf=%p, table->record[0]=%p, offset=%lld",
                          keyspace_name.c_str(), table_name.c_str(), row_index, 
                          buf, table->record[0], (long long)(buf - table->record[0]));
+    sql_print_information("Scylla: Table %s.%s: record layout: null_bytes=%u, null_fields=%u, reclength=%u, null_flags=%p",
+                         keyspace_name.c_str(), table_name.c_str(),
+                         (unsigned)table->s->null_bytes, (unsigned)table->s->null_fields,
+                         (unsigned)table->s->reclength, table->null_flags);
   }
   
   // Move all fields to point to the provided buffer instead of table->record[0]
@@ -523,6 +527,11 @@ int ha_scylla::store_result_to_record(uchar *buf, size_t row_index)
       sql_print_information("Scylla: Table %s.%s: Field '%s' offset in record: %ld, field->ptr=%p, buf=%p",
         keyspace_name.c_str(), table_name.c_str(), field_name.c_str(),
         (long)(field->ptr - buf), field->ptr, buf);
+      if ((i == 0 || i == 1) && field->null_ptr) {
+        sql_print_information("Scylla: Table %s.%s: Field '%s' null_ptr=%p (offset %ld), null_bit=0x%02x",
+          keyspace_name.c_str(), table_name.c_str(), field_name.c_str(),
+          field->null_ptr, (long)((uchar*)field->null_ptr - buf), (unsigned)field->null_bit);
+      }
       if (field_name == "animal_id") {
         unsigned char *p = (unsigned char*)field->ptr;
         char hex[32];
