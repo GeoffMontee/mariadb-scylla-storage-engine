@@ -494,6 +494,14 @@ int ha_scylla::store_result_to_record(uchar *buf, size_t row_index)
                          buf, table->record[0], (long long)(buf - table->record[0]));
   }
   
+  // Move all fields to point to the provided buffer instead of table->record[0]
+  my_ptrdiff_t offset = buf - table->record[0];
+  if (offset) {
+    for (uint i = 0; i < table->s->fields; i++) {
+      table->field[i]->move_field_offset(offset);
+    }
+  }
+  
   // Clear the buffer to zero (safe for all types)
   memset(buf, 0, table->s->reclength);
   
@@ -506,35 +514,15 @@ int ha_scylla::store_result_to_record(uchar *buf, size_t row_index)
     column_map[col_name_lower] = i;
   }
   
-  // If the null bitmap sits at the start of the record buffer, shift all fields
-  // by null_bytes so writes don't overlap the bitmap.
-  my_ptrdiff_t base_offset = 0;
-  if (table->s->null_bytes > 0 && table->null_flags == table->record[0]) {
-    base_offset = table->s->null_bytes;
-  }
-  
   // Map fields by name, not by position
   for (uint i = 0; i < table->s->fields; i++) {
     Field *field = table->field[i];
-    my_ptrdiff_t field_offset = field->ptr - table->record[0];
-    uchar *field_buf = buf + field_offset + base_offset;
-    field->move_field(field_buf);
     std::string field_name(field->field_name.str, field->field_name.length);
     // Debug: print offset and raw bytes for animal_id
     if (verbose_logging && global_system_variables.log_warnings >= 3) {
       sql_print_information("Scylla: Table %s.%s: Field '%s' offset in record: %ld, field->ptr=%p, buf=%p",
         keyspace_name.c_str(), table_name.c_str(), field_name.c_str(),
         (long)(field->ptr - buf), field->ptr, buf);
-      if (i == 0) {
-        sql_print_information("Scylla: Table %s.%s: record layout: null_bytes=%u, reclength=%u, null_flags=%p",
-          keyspace_name.c_str(), table_name.c_str(),
-          (unsigned)table->s->null_bytes, (unsigned)table->s->reclength, table->null_flags);
-      }
-      if (field->null_ptr) {
-        sql_print_information("Scylla: Table %s.%s: Field '%s' null_ptr=%p (offset %ld), null_bit=0x%02x",
-          keyspace_name.c_str(), table_name.c_str(), field_name.c_str(),
-          field->null_ptr, (long)((uchar*)field->null_ptr - buf), (unsigned)field->null_bit);
-      }
       if (field_name == "animal_id") {
         unsigned char *p = (unsigned char*)field->ptr;
         char hex[32];
@@ -584,8 +572,6 @@ int ha_scylla::store_result_to_record(uchar *buf, size_t row_index)
       }
       field->set_null();
     }
-    // Restore field position
-    field->move_field(table->record[0] + field_offset);
   }
   
   // Final debug: Check what animal_id actually contains in the buffer before returning
@@ -594,16 +580,19 @@ int ha_scylla::store_result_to_record(uchar *buf, size_t row_index)
       Field *field = table->field[i];
       std::string field_name(field->field_name.str, field->field_name.length);
       if (field_name == "animal_id" || field_name == "habitat_id" || field_name == "feeding_id") {
-        my_ptrdiff_t field_offset = field->ptr - table->record[0];
-        uchar *field_buf = buf + field_offset + base_offset;
-        field->move_field(field_buf);
         longlong final_val = field->val_int();
-        field->move_field(table->record[0] + field_offset);
         
         sql_print_information("Scylla: Table %s.%s: Final check before return: '%s' = %lld (in buffer %p)",
                              keyspace_name.c_str(), table_name.c_str(),
                              field_name.c_str(), final_val, buf);
       }
+    }
+  }
+  
+  // Restore field pointers to table->record[0] if we moved them
+  if (offset) {
+    for (uint i = 0; i < table->s->fields; i++) {
+      table->field[i]->move_field_offset(-offset);
     }
   }
   
