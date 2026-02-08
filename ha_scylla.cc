@@ -393,6 +393,28 @@ int ha_scylla::open(const char *name, int mode, uint test_if_locked)
     DBUG_RETURN(rc);
   }
   
+  // MariaDB keeps a null-bitmap byte at the start when nullable fields exist.
+  // For some table layouts, field[0] may still point at offset 0 while field[1]
+  // already accounts for the null byte; shift field[0] once to keep reads/writes
+  // from overlapping the null bitmap.
+  if (table->s->null_bytes > 0 && table->s->fields > 1) {
+    Field *first = table->field[0];
+    Field *second = table->field[1];
+    my_ptrdiff_t first_off = first->ptr - table->record[0];
+    my_ptrdiff_t second_off = second->ptr - table->record[0];
+    my_ptrdiff_t expected_second = first_off + first->pack_length() + table->s->null_bytes;
+    
+    if (first->null_ptr == nullptr && first_off == 0 && second_off == expected_second) {
+      first->move_field(first->ptr + table->s->null_bytes);
+      if (verbose_logging && global_system_variables.log_warnings >= 3) {
+        std::string first_name(first->field_name.str, first->field_name.length);
+        sql_print_information("Scylla: Table %s.%s: Adjusted field[0] '%s' offset to %ld to avoid null bitmap overlap",
+                             keyspace_name.c_str(), table_name.c_str(),
+                             first_name.c_str(), (long)(first->ptr - table->record[0]));
+      }
+    }
+  }
+  
   // Initialize lock data structure
   thr_lock_data_init(&thr_lock, &lock, NULL);
   
